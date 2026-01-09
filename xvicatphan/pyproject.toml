@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "catphan-analysis"
 version = "1.0.0"
-description = "Professional software package for CatPhan phantom DICOM analysis"
+description = "Validated, professional software package for CatPhan phantom DICOM analysis"
 readme = "README.md"
 requires-python = ">=3.7"
 license = {text = "MIT"}
@@ -14,7 +14,7 @@ authors = [
 ]
 keywords = ["medical physics", "catphan", "DICOM", "QA", "phantom analysis", "radiotherapy"]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Healthcare Industry",
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Medical Science Apps.",
