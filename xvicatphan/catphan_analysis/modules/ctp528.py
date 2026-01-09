@@ -41,75 +41,19 @@ class CTP528Module:
         """
         Select and average 3 slices around the CTP528 module for optimal contrast.
         
+        This is a wrapper that calls the utility function in CatPhanGeometry.
+        
         Args:
-            search_range: Number of slices to check above/below the target slice
+            search_range: Number of slices to check above/below the target slice (unused, kept for compatibility)
             
         Returns:
             Tuple of (averaged_image, means_array, z_offset)
         """
-        z = self.slice_index
-        ds = self.dicom_set
+        from ..utils.geometry import CatPhanGeometry
         
-        # Get slices around the target
-        img_zm2 = ds[z-2].pixel_array
-        img_zm1 = ds[z-1].pixel_array
-        img_z = ds[z].pixel_array
-        img_zp1 = ds[z+1].pixel_array
-        img_zp2 = ds[z+2].pixel_array
-        
-        sz = (ds[z].Rows, ds[z].Columns)
-        space = ds[z].PixelSpacing
-        c = (int(sz[0]/2), int(sz[1]/2))
-        
-        # Trace through line pairs
-        lp_r = 47  # radius in mm
-        tfine = np.linspace(0, np.pi, 500)
-        lp_b = lp_r/space[0]*np.cos(tfine) + c[0]
-        lp_a = lp_r/space[1]*np.sin(tfine) + c[1]
-        
-        # Get indexing for image matrix
-        x = np.linspace(0, (sz[0]-1)/2, sz[0])
-        y = np.linspace(0, (sz[1]-1)/2, sz[1])
-        
-        # Interpolate profiles for each image
-        images = [img_zm2, img_zm1, img_z, img_zp1, img_zp2]
-        profiles = []
-        
-        for im in images:
-            f = np.zeros(len(lp_a))
-            for i in range(len(lp_a)):
-                f[i] = interpn((x, y), im+2048, [lp_a[i]*space[0], lp_b[i]*space[1]])
-            profiles.append(f)
-        
-        # Find slice with highest average intensity
-        means = [np.mean(f) for f in profiles]
-        tmp = np.argmax(means)
-        
-        # Select 3 consecutive slices around the maximum
-        idx = np.zeros(5)
-        try:
-            idx[tmp-1] = 1
-            idx[tmp] = 1
-            idx[tmp+1] = 1
-        except:
-            if tmp == 0:
-                idx = [1, 1, 0, 0, 0]
-            elif tmp == 4:
-                idx = [0, 0, 0, 1, 1]
-            else:
-                return img_z, means, 0
-        
-        # Calculate 3-slice average
-        im = np.zeros(sz)
-        z_mean = []
-        
-        for i, include in enumerate(idx):
-            if include:
-                im += images[i]
-                z_mean.append(i - 2)
-        
-        im = im / sum(idx)
-        z_mean = np.mean(z_mean)
+        im, means, z_mean = CatPhanGeometry.select_optimal_ctp528_slices(
+            self.dicom_set, self.slice_index
+        )
         
         self.averaged_image = im
         return im, means, z_mean
@@ -131,11 +75,14 @@ class CTP528Module:
         from ..utils.image_processing import ImageProcessor
         processor = ImageProcessor()
         
-        mtf, lpf, _, _, _, lpx, lpy = self._calculate_mtf(
+        mtf, profiles, _, _, _, lpx, lpy = self._calculate_mtf(
             self.averaged_image, 
             self.center, 
             self.rotation_offset
         )
+        
+        # Store profiles for plotting
+        self.line_pair_profiles = profiles
         
         # Normalize MTF
         nMTF = mtf / max(np.array(mtf))
@@ -165,36 +112,147 @@ class CTP528Module:
         """
         Calculate Modulation Transfer Function from line pair patterns.
         
+        Full implementation from analysis_CTP528 in original processDICOMcat.py
+        
         Args:
             image: Input image array
             center: Center coordinates (x, y)
             t_offset: Angular offset in degrees
             
         Returns:
-            Tuple of (MTF, frequencies, profiles, line_pair_coords)
+            Tuple of (MTF, frequencies, profiles, lpx, lpy)
         """
-        # Import the detailed MTF calculation from the original code
-        # This is a placeholder - the full implementation would extract
-        # the analysis_CTP528 function logic
-        
-        sz = image.shape
-        ds = self.dicom_set[self.slice_index]
+        ds    = self.dicom_set[self.slice_index]
+        sz    = (ds.Rows, ds.Columns)
         space = ds.PixelSpacing
         
+        # x,y coordinates of image (in pixels)
+        x = np.linspace(0, (sz[0]-1), sz[0])
+        y = np.linspace(0, (sz[1]-1), sz[1])
+        
         # Line pair parameters
-        lp_r = 47  # radius in mm
+        lp_r = 48  # radius in mm
         
-        # Calculate line pair positions and extract profiles
-        # (Full implementation would go here)
-        tfine = np.linspace(0, np.pi, 500)
-        lpx = lp_r/space[0]*np.cos(tfine) + center[0]
-        lpy = lp_r/space[1]*np.sin(tfine) + center[1]
+        # Angles between line pairs
+        theta = [
+            np.radians(10 + t_offset),
+            np.radians(40 + t_offset),
+            np.radians(62 + t_offset),
+            np.radians(85 + t_offset),
+            np.radians(103 + t_offset),
+            np.radians(121 + t_offset),
+            np.radians(140 + t_offset),
+            np.radians(157 + t_offset),
+            np.radians(173 + t_offset),
+            np.radians(186 + t_offset)
+        ]
         
-        # Simplified MTF calculation - full version would analyze actual line pairs
-        mtf = np.ones(21)  # Placeholder
-        lpf = np.linspace(0, 2.0, 21)
+        lpx = lp_r/space[0]*np.cos(theta) + center[0]
+        lpy = lp_r/space[0]*np.sin(theta) + center[1]
         
-        return mtf, lpf, None, None, None, lpx, lpy
+        # Number of peaks expected in each line pair
+        npeaks = [[1,2],[2,3],[3,4],[4,4],[5,4],[6,5],[7,5],[8,5],[9,5],[10,5]]
+        
+        def get_MTF_single_pair(lpx_pair, lpy_pair, npeaks_pair):
+            """Calculate MTF for a single line pair."""
+            # Interpolate profile across line pair
+            x1 = np.linspace(lpx_pair[0], lpx_pair[1], 50)
+            y1 = np.linspace(lpy_pair[0], lpy_pair[1], 50)
+            f1 = np.zeros(len(x1))
+            
+            for i in range(len(x1)):
+                f1[i] = interpn((x, y), image, [y1[i], x1[i]])
+            
+            # Derivative of profile
+            df1 = np.diff(f1)
+            
+            # Find inflection points (peaks in derivative)
+            h = 50
+            peaks_max1, _ = find_peaks(df1, height=h)
+            peaks_min1, _ = find_peaks(-df1, height=h)
+            
+            # Reduce threshold until we find enough peaks
+            while (len(peaks_max1) < npeaks_pair[1]) or (len(peaks_min1) < npeaks_pair[1]):
+                if h <= 10:
+                    # Cannot resolve this line pair
+                    return 0, f1
+                h -= 1
+                peaks_max1, _ = find_peaks(df1, height=h)
+                peaks_min1, _ = find_peaks(-df1, height=h)
+            
+            # Combine and sort peaks
+            peaks1 = np.hstack((peaks_max1, peaks_min1))
+            peaks1 = np.array(sorted(peaks1))
+            
+            # Find maxima and minima in the profile at peak locations
+            idxmax = []
+            idxmin = []
+            Imax = []
+            Imin = []
+            offset = 1
+            
+            for i in range(len(peaks1)-1):
+                if i % 2 == 0:
+                    tmp = np.array(f1[peaks1[i]-offset:peaks1[i+1]+offset]).argmax()
+                    idxmax.append(tmp - offset + peaks1[i])
+                    Imax.append(f1[tmp - offset + peaks1[i]])
+                else:
+                    tmp = np.array(f1[peaks1[i]-offset:peaks1[i+1]+offset]).argmin()
+                    idxmin.append(tmp - offset + peaks1[i])
+                    Imin.append(f1[tmp - offset + peaks1[i]])
+            
+            # Calculate MTF for this line pair
+            if len(Imax) > 0 and len(Imin) > 0:
+                MTF = (np.mean(Imax) - np.mean(Imin)) / (np.mean(Imax) + np.mean(Imin))
+            else:
+                MTF = 0
+                
+            return MTF, f1
+        
+        # Calculate MTF for each line pair
+        MTF = []
+        profiles = []
+        for i in range(len(theta)-1):
+            mtf_val, profile = get_MTF_single_pair(
+                (lpx[i], lpx[i+1]),
+                (lpy[i], lpy[i+1]),
+                npeaks[i]
+            )
+            MTF.append(mtf_val)
+            profiles.append(profile)
+        
+        # Normalize MTF
+        MTF = np.array(MTF)
+        
+        return MTF, profiles, None, None, None, lpx, lpy
+    
+    def get_plot_data(self):
+        """
+        Get data needed for plotting visualizations.
+        
+        Returns:
+            Dictionary with plot data including line pair coordinates,
+            outer boundary, and MTF curve data
+        """
+        from ..utils.geometry import CatPhanGeometry
+        
+        if not self.results:
+            raise ValueError("Analysis must be run before getting plot data")
+        
+        # Get outer boundary for phantom visualization
+        geometry = CatPhanGeometry()
+        _, outer_boundary = geometry.find_center(self.averaged_image)
+        
+        return {
+            'lpx': self.results['line_pair_x'],
+            'lpy': self.results['line_pair_y'],
+            'outer_boundary': outer_boundary,
+            'mtf_data': {
+                'nMTF': self.results['mtf_array'],
+                'lp': self.results['lp_frequencies']
+            },
+            'line_pair_profiles': self.line_pair_profiles if hasattr(self, 'line_pair_profiles') else None
+        }
     
     def get_results_summary(self):
         """

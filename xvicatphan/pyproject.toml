@@ -59,6 +59,7 @@ Issues = "https://github.com/yourusername/catphan-analysis/issues"
 [project.scripts]
 catphan-analyze = "main:main"
 catphan-listen = "listen_and_analyze:main"
+catphan-select = "select_and_analyze:main"
 
 [tool.setuptools]
 packages = ["catphan_analysis", "catphan_analysis.modules", "catphan_analysis.utils"]

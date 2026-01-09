@@ -108,6 +108,7 @@ class CTP404Module:
         
         self.results = results
         self.roi_coordinates = roi_coords
+        self.scaling_points = None  # Will be set by analyzer
         
         return results
     
@@ -129,31 +130,135 @@ class CTP404Module:
         
         return lcv
     
-    def calculate_spatial_scaling(self):
+    def calculate_spatial_scaling(self, ct_point, cb_point):
         """
         Calculate X and Y scaling using geometric features.
         
+        Full implementation from ScalingXY_CTP404 in original processDICOMcat.py
+        
+        Args:
+            ct_point: Top air ROI center from rotation calculation
+            cb_point: Bottom air ROI center from rotation calculation
+            
         Returns:
-            Tuple of (x_scale_cm, y_scale_cm, center_points)
+            Tuple of (x_scale_cm, y_scale_cm, scaling_points)
         """
-        # This would implement the ScalingXY_CTP404 logic
-        # Simplified placeholder
-        ds = self.dicom_set[self.slice_index]
-        space = ds.PixelSpacing
+        from scipy.interpolate import interpn
+        from scipy.signal import find_peaks
         
-        # Expected distance between features in mm
-        expected_distance = 100  # mm
+        idx = self.slice_index
         
-        # Calculate scaling (placeholder)
-        scale_x = expected_distance / 10  # convert to cm
-        scale_y = expected_distance / 10
+        # 3 slice averaging
+        im1 = self.dicom_set[idx].pixel_array
+        im2 = self.dicom_set[idx+1].pixel_array
+        im3 = self.dicom_set[idx-1].pixel_array
+        im = (im1 + im2 + im3) / 3
+        
+        # Get image size and pixel spacing
+        sz = (self.dicom_set[idx].Rows, self.dicom_set[idx].Columns)
+        space = self.dicom_set[idx].PixelSpacing
+        
+        # Index for x and y pixel positions
+        x = np.linspace(0, (sz[0]-1), sz[0])
+        y = np.linspace(0, (sz[1]-1), sz[1])
+        
+        # Get center from averaging top and bottom air ROI centers
+        cmid = [(ct_point[0] + cb_point[0])/2, (ct_point[1] + cb_point[1])/2]
+        
+        # Get coordinates through center of top and bottom ROIs
+        r = 70  # Radius of circle passing through ROI centers
+        t_offset = self.rotation_offset
+        
+        xscale_xcoord = [cmid[0] - r/space[0]*np.cos(t_offset*2*np.pi/360),
+                        cmid[0] + r/space[0]*np.cos(t_offset*2*np.pi/360)]
+        xscale_ycoord = [cmid[1] - r/space[0]*np.sin(t_offset*2*np.pi/360),
+                        cmid[1] + r/space[0]*np.sin(t_offset*2*np.pi/360)]
+        l = np.sqrt((xscale_xcoord[1]-xscale_xcoord[0])**2 + 
+                   (xscale_ycoord[1]-xscale_ycoord[0])**2)
+        
+        # Create profiles through air ROIs
+        n = 150
+        xtmp = np.linspace(xscale_xcoord[0], xscale_xcoord[1], n)
+        ytmp = np.linspace(xscale_ycoord[0], xscale_ycoord[1], n)
+        ltmp = np.linspace(0, l, n)
+        ftmp = np.zeros(len(xtmp))
+        
+        for i in range(len(xtmp)):
+            ftmp[i] = interpn((x, y), im, [ytmp[i], xtmp[i]])
+        
+        f1 = ftmp
+        pts = [xtmp, ytmp]
+        
+        # Repeat for perpendicular direction (left/right ROIs)
+        t_offset = t_offset + 90
+        xscale_xcoord = [cmid[0] - r/space[0]*np.cos(t_offset*2*np.pi/360),
+                        cmid[0] + r/space[0]*np.cos(t_offset*2*np.pi/360)]
+        xscale_ycoord = [cmid[1] - r/space[0]*np.sin(t_offset*2*np.pi/360),
+                        cmid[1] + r/space[0]*np.sin(t_offset*2*np.pi/360)]
+        
+        xtmp = np.linspace(xscale_xcoord[0], xscale_xcoord[1], n)
+        ytmp = np.linspace(xscale_ycoord[0], xscale_ycoord[1], n)
+        ftmp = np.zeros(len(xtmp))
+        
+        for i in range(len(xtmp)):
+            ftmp[i] = interpn((x, y), im, [ytmp[i], xtmp[i]])
+        
+        f2 = ftmp
+        pts.extend([xtmp, ytmp])
+        
+        # Take derivatives
+        df1 = np.diff(f1)
+        df2 = np.diff(f2)
+        
+        # Find inflection points - try progressively lower thresholds
+        peaks1 = None
+        peaks2 = None
+        
+        for h in [40, 30, 20, 10, 5]:
+            try:
+                peaks_max1, _ = find_peaks(df1, height=h)
+                peaks_min1, _ = find_peaks(-df1, height=h)
+                peaks_max2, _ = find_peaks(df2, height=h)
+                peaks_min2, _ = find_peaks(-df2, height=h)
+                
+                peaks1 = np.hstack((peaks_max1, peaks_min1))
+                peaks1 = np.array(sorted(peaks1))
+                peaks2 = np.hstack((peaks_max2, peaks_min2))
+                peaks2 = np.array(sorted(peaks2))
+                
+                # Check if we have enough peaks (need at least 2 for each)
+                if len(peaks1) >= 2 and len(peaks2) >= 2:
+                    break
+            except:
+                continue
+        
+        # If we still don't have enough peaks, raise an error with diagnostic info
+        if peaks1 is None or len(peaks1) < 2 or len(peaks2) < 2:
+            raise ValueError(
+                f"Could not find enough peaks for spatial scaling calculation. "
+                f"Found {len(peaks1) if peaks1 is not None else 0} peaks in direction 1, "
+                f"{len(peaks2) if peaks2 is not None else 0} peaks in direction 2. "
+                f"Derivative ranges: df1=[{df1.min():.1f}, {df1.max():.1f}], "
+                f"df2=[{df2.min():.1f}, {df2.max():.1f}]"
+            )
+        
+        # Calculate scaling from edge-to-edge distances
+        xscale1 = np.abs((ltmp[peaks1[0]] - ltmp[peaks1[len(peaks1)-2]])) * space[0]
+        xscale2 = np.abs((ltmp[peaks1[1]] - ltmp[peaks1[len(peaks1)-1]])) * space[0]
+        yscale1 = np.abs((ltmp[peaks2[0]] - ltmp[peaks2[len(peaks2)-2]])) * space[0]
+        yscale2 = np.abs((ltmp[peaks2[1]] - ltmp[peaks2[len(peaks2)-1]])) * space[0]
+        
+        # Average and convert to cm
+        x_scale = ((xscale1 + xscale2) / 2) / 10
+        y_scale = ((yscale1 + yscale2) / 2) / 10
         
         self.scaling_results = {
-            'x_scale_cm': scale_x,
-            'y_scale_cm': scale_y
+            'x_scale_cm': x_scale,
+            'y_scale_cm': y_scale
         }
+        self.scaling_points = pts
         
-        return scale_x, scale_y, []
+        return x_scale, y_scale, pts
     
     def measure_slice_thickness(self):
         """
@@ -162,13 +267,14 @@ class CTP404Module:
         Returns:
             Slice thickness in mm
         """
+        from ..utils.geometry import CatPhanGeometry
+        
         # Use non-averaged image for slice thickness
         im = self.dicom_set[self.slice_index].pixel_array
         space = self.dicom_set[self.slice_index].PixelSpacing
         
-        # Simplified calculation - full version would analyze wire ramp
-        # This is a placeholder
-        thickness = self.dicom_set[self.slice_index].SliceThickness
+        # Calculate slice thickness using wire ramp analysis
+        thickness = CatPhanGeometry.calculate_slice_thickness(im, space, self.center)
         
         self.slice_thickness = thickness
         return thickness
@@ -183,14 +289,14 @@ class CTP404Module:
         # Run all analyses
         contrast_results = self.analyze_contrast()
         lcv = self.calculate_low_contrast_visibility()
-        x_scale, y_scale, _ = self.calculate_spatial_scaling()
         thickness = self.measure_slice_thickness()
+        
+        # Note: spatial scaling is calculated separately by the analyzer
+        # using rotation points from find_rotation()
         
         return {
             'contrast_rois': contrast_results,
             'low_contrast_visibility': lcv,
-            'x_scale_cm': x_scale,
-            'y_scale_cm': y_scale,
             'slice_thickness_mm': thickness
         }
     
@@ -217,6 +323,32 @@ class CTP404Module:
         
         mask = dist_from_center <= radius
         return mask
+    
+    def get_plot_data(self):
+        """
+        Get data needed for plotting visualizations.
+        
+        Returns:
+            Dictionary with plot data including ROI coordinates,
+            scaling points, and outer boundary
+        """
+        from ..utils.geometry import CatPhanGeometry
+        
+        if not self.results:
+            raise ValueError("Analysis must be run before getting plot data")
+        
+        # Get outer boundary for phantom visualization
+        geometry = CatPhanGeometry()
+        _, outer_boundary = geometry.find_center(self.averaged_image)
+        
+        # Get scaling points (if calculated)
+        pts = self.scaling_points if self.scaling_points else [[], [], [], []]
+        
+        return {
+            'roi_coordinates': self.roi_coordinates,
+            'scaling_points': pts,
+            'outer_boundary': outer_boundary
+        }
     
     def get_results_summary(self):
         """

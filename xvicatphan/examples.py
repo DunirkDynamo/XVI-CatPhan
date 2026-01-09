@@ -9,6 +9,27 @@ from catphan_analysis import CatPhanAnalyzer
 from catphan_analysis.modules import CTP404Module, CTP486Module, CTP528Module
 
 
+def example_gui_selection():
+    """
+    Example: GUI folder selection for analysis.
+    
+    This is the easiest way to analyze data - just run select_and_analyze.py
+    and choose your folder.
+    """
+    print("\n" + "="*60)
+    print("Example: GUI Folder Selection")
+    print("="*60 + "\n")
+    print("To use GUI folder selection, run:")
+    print("  python select_and_analyze.py")
+    print("\nOr after installation:")
+    print("  catphan-select")
+    print("\nThis will:")
+    print("  1. Open a folder browser")
+    print("  2. Let you select a folder with DICOM files")
+    print("  3. Automatically run the analysis")
+    print("  4. Save results to the same folder")
+
+
 def example_basic_analysis():
     """
     Example: Basic complete analysis.

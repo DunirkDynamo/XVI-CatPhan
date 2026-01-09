@@ -76,34 +76,66 @@ class CTP486Module:
         roi_off = self.roi_offset / space[0]
         outer_c = self.center
         
-        # Create masks for each ROI region
+        # Create masks for each ROI region and store coordinates
         masks = {}
         roi_data = {}
+        roi_coords = []  # Store box coordinates as we create them
+        half_sz = int(roi_sz / 2)
         
         # Center ROI
         mc = self._create_box_mask(sz, outer_c[0], outer_c[1], roi_sz)
         roi_data['centre'] = im[mc == 1]
         masks['centre'] = mc
+        roi_coords.append([
+            int(outer_c[0]) - half_sz,
+            int(outer_c[0]) + half_sz,
+            int(outer_c[1]) - half_sz,
+            int(outer_c[1]) + half_sz
+        ])
         
-        # North ROI (positive Y direction)
-        mn = self._create_box_mask(sz, outer_c[0], outer_c[1] + roi_off, roi_sz)
+        # North ROI (negative Y in image coords = up in display)
+        mn = self._create_box_mask(sz, outer_c[0], outer_c[1] - roi_off, roi_sz)
         roi_data['north'] = im[mn == 1]
         masks['north'] = mn
+        roi_coords.append([
+            int(outer_c[0]) - half_sz,
+            int(outer_c[0]) + half_sz,
+            int(outer_c[1] - roi_off) - half_sz,
+            int(outer_c[1] - roi_off) + half_sz
+        ])
         
-        # South ROI (negative Y direction)
-        ms = self._create_box_mask(sz, outer_c[0], outer_c[1] - roi_off, roi_sz)
+        # South ROI (positive Y in image coords = down in display)
+        ms = self._create_box_mask(sz, outer_c[0], outer_c[1] + roi_off, roi_sz)
         roi_data['south'] = im[ms == 1]
         masks['south'] = ms
+        roi_coords.append([
+            int(outer_c[0]) - half_sz,
+            int(outer_c[0]) + half_sz,
+            int(outer_c[1] + roi_off) - half_sz,
+            int(outer_c[1] + roi_off) + half_sz
+        ])
         
         # East ROI (positive X direction)
         me = self._create_box_mask(sz, outer_c[0] + roi_off, outer_c[1], roi_sz)
         roi_data['east'] = im[me == 1]
         masks['east'] = me
+        roi_coords.append([
+            int(outer_c[0] + roi_off) - half_sz,
+            int(outer_c[0] + roi_off) + half_sz,
+            int(outer_c[1]) - half_sz,
+            int(outer_c[1]) + half_sz
+        ])
         
         # West ROI (negative X direction)
         mw = self._create_box_mask(sz, outer_c[0] - roi_off, outer_c[1], roi_sz)
         roi_data['west'] = im[mw == 1]
         masks['west'] = mw
+        roi_coords.append([
+            int(outer_c[0] - roi_off) - half_sz,
+            int(outer_c[0] - roi_off) + half_sz,
+            int(outer_c[1]) - half_sz,
+            int(outer_c[1]) + half_sz
+        ])
         
         # Calculate statistics for each region
         results = []
@@ -118,9 +150,6 @@ class CTP486Module:
         # Calculate uniformity metric
         uniformity = (np.max(means) - np.min(means)) / np.max(means) * 100
         results.append(['Uniformity', uniformity, None])
-        
-        # Store ROI coordinates for visualization
-        roi_coords = self._get_roi_coordinates(outer_c, roi_sz, roi_off)
         
         # Create composite mask
         m_total = mc + mn + ms + me + mw
@@ -156,66 +185,9 @@ class CTP486Module:
         y_start = max(0, y_start)
         y_end = min(sz[1], y_end)
         
-        mask[x_start:x_end, y_start:y_end] = 1
+        # Use proper numpy indexing: [row, col] = [y, x]
+        mask[y_start:y_end, x_start:x_end] = 1
         return mask
-    
-    def _get_roi_coordinates(self, center, roi_sz, roi_off):
-        """
-        Get coordinates of ROI boxes for visualization.
-        
-        Args:
-            center: Center coordinates (x, y)
-            roi_sz: Size of boxes in pixels
-            roi_off: Offset from center in pixels
-            
-        Returns:
-            List of box coordinates [x_start, x_end, y_start, y_end]
-        """
-        half_sz = int(roi_sz / 2)
-        
-        boxes = []
-        
-        # Center
-        boxes.append([
-            int(center[0]) - half_sz,
-            int(center[0]) + half_sz,
-            int(center[1]) - half_sz,
-            int(center[1]) + half_sz
-        ])
-        
-        # North
-        boxes.append([
-            int(center[0]) - half_sz,
-            int(center[0]) + half_sz,
-            int(center[1] + roi_off) - half_sz,
-            int(center[1] + roi_off) + half_sz
-        ])
-        
-        # South
-        boxes.append([
-            int(center[0]) - half_sz,
-            int(center[0]) + half_sz,
-            int(center[1] - roi_off) - half_sz,
-            int(center[1] - roi_off) + half_sz
-        ])
-        
-        # East
-        boxes.append([
-            int(center[0] + roi_off) - half_sz,
-            int(center[0] + roi_off) + half_sz,
-            int(center[1]) - half_sz,
-            int(center[1]) + half_sz
-        ])
-        
-        # West
-        boxes.append([
-            int(center[0] - roi_off) - half_sz,
-            int(center[0] - roi_off) + half_sz,
-            int(center[1]) - half_sz,
-            int(center[1]) + half_sz
-        ])
-        
-        return boxes
     
     def analyze(self):
         """
@@ -230,6 +202,27 @@ class CTP486Module:
             'regions': results[:-1],  # All except uniformity metric
             'uniformity_percent': self.uniformity_percent,
             'roi_coordinates': roi_coords
+        }
+    
+    def get_plot_data(self):
+        """
+        Get data needed for plotting visualizations.
+        
+        Returns:
+            Dictionary with plot data including ROI boxes and outer boundary
+        """
+        from ..utils.geometry import CatPhanGeometry
+        
+        if not self.results:
+            raise ValueError("Analysis must be run before getting plot data")
+        
+        # Get outer boundary for phantom visualization
+        geometry = CatPhanGeometry()
+        _, outer_boundary = geometry.find_center(self.averaged_image)
+        
+        return {
+            'roi_boxes': self.roi_coordinates,
+            'outer_boundary': outer_boundary
         }
     
     def get_results_summary(self):

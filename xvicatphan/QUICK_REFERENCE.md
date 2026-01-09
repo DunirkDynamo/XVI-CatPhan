@@ -1,5 +1,9 @@
 # Quick Reference Guide
 
+**Version 1.0 - Working Release**
+
+This package reproduces the analysis from processDICOMcat2.py in an object-oriented architecture.
+
 ## Installation
 
 ```bash
@@ -8,7 +12,14 @@ pip install -r requirements.txt
 
 ## Quick Start
 
-### 1. Analyze CatPhan Images (Simplest)
+### 1. GUI Folder Selection (Easiest)
+
+```bash
+catphan-select
+# Or: python select_and_analyze.py
+```
+
+### 2. Analyze CatPhan Images (Simple)
 
 ```python
 from catphan_analysis import CatPhanAnalyzer
@@ -20,16 +31,18 @@ analyzer.generate_report()
 analyzer.close_log()
 ```
 
-### 2. Command Line
+### 3. Command Line
 
 ```bash
-python main.py /path/to/dicom/files
+catphan-analyze /path/to/dicom/files
+# Or: python main.py /path/to/dicom/files
 ```
 
-### 3. Automated DICOM Monitoring
+### 4. Automated DICOM Monitoring
 
 ```bash
-python listen_and_analyze.py /path/to/receiver
+catphan-listen /path/to/receiver
+# Or: python listen_and_analyze.py /path/to/receiver
 ```
 
 ## Class Quick Reference

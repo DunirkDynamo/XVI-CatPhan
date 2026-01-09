@@ -1,16 +1,24 @@
 # CatPhan Analysis Package
 
-A professional, object-oriented software package for analyzing CatPhan phantom DICOM images. This package provides modular, class-based analysis of CTP404, CTP486, and CTP528 modules.
+A professional, object-oriented software package for analyzing CatPhan phantom DICOM images. This package provides modular, class-based analysis of CTP404, CTP486, and CTP528 modules with accurate reproduction of the original analysis algorithms.
+
+## Status
+
+**Version 1.0 - Working Release**
+
+This package has been validated against the original reference implementation (processDICOMcat2.py) and produces matching results for all analysis modules.
 
 ## Features
 
 - **Modular Architecture**: Each analysis module (CTP404, CTP486, CTP528) is implemented as a separate class
 - **Executive Class**: `CatPhanAnalyzer` coordinates all analysis modules
+- **GUI Folder Selection**: Easy-to-use folder browser for selecting DICOM data
 - **Automated Processing**: DICOM listener for automated file reception and analysis
 - **Comprehensive Analysis**:
   - CTP404: Contrast, HU accuracy, spatial scaling, slice thickness
-  - CTP486: Image uniformity
-  - CTP528: Spatial resolution (MTF)
+  - CTP486: Image uniformity (5-region analysis)
+  - CTP528: Spatial resolution (MTF) with line pair profile visualization
+- **Validated Algorithms**: All calculations match the reference implementation
 
 ## Package Structure
 
@@ -74,6 +82,16 @@ python main.py /path/to/dicom/files --output /path/to/output
 # Specify CatPhan model
 python main.py /path/to/dicom/files --model 504
 ```
+
+### GUI Folder Selection
+
+Use the graphical folder browser to select data for analysis:
+
+```bash
+python select_and_analyze.py
+```
+
+This opens a folder selection dialog. Navigate to a folder containing DICOM files, and the analysis will run automatically with results saved to that same folder.
 
 ### Automated DICOM Listening
 

@@ -50,6 +50,10 @@ class CatPhanAnalyzer:
         self.ctp486 = None
         self.ctp528 = None
         
+        # Rotation points for CTP404
+        self.ct_point = None
+        self.cb_point = None
+        
         # Results
         self.results = {}
         
@@ -131,8 +135,10 @@ class CatPhanAnalyzer:
         idx_404 = self.slice_indices['ctp404']
         idx_486 = self.slice_indices['ctp486']
         
-        # Average 3 slices for each module
-        im_528 = ImageProcessor.average_slices(self.dicom_set, [idx_528-1, idx_528, idx_528+1])
+        # For CTP528, use intelligent slice selection (same as original image_selector_CTP528)
+        im_528, _, _ = geometry.select_optimal_ctp528_slices(self.dicom_set, idx_528)
+        
+        # For CTP404 and CTP486, use simple 3-slice averaging
         im_404 = ImageProcessor.average_slices(self.dicom_set, [idx_404-1, idx_404, idx_404+1])
         im_486 = ImageProcessor.average_slices(self.dicom_set, [idx_486-1, idx_486, idx_486+1])
         
@@ -163,10 +169,12 @@ class CatPhanAnalyzer:
         self._log("\n--- Finding CatPhan rotation ---")
         
         geometry = CatPhanGeometry()
-        im_404 = self.dicom_set[self.slice_indices['ctp404']].pixel_array
+        idx_404 = self.slice_indices['ctp404']
+        im_404 = self.dicom_set[idx_404].pixel_array
         c_404 = self.module_centers['ctp404']
+        space = self.dicom_set[idx_404].PixelSpacing
         
-        self.rotation_offset, _, _ = geometry.find_rotation(im_404, c_404)
+        self.rotation_offset, self.ct_point, self.cb_point = geometry.find_rotation(im_404, c_404, space)
         
         self._log(f"Rotation offset: {self.rotation_offset:.1f} degrees")
         
@@ -223,11 +231,41 @@ class CatPhanAnalyzer:
         if not self.ctp404:
             self.initialize_modules()
         
+        # Calculate refined center for CTP404 using spatial scaling points
+        # This mimics the original script's approach (line 1453 in processDICOMcat.py)
+        if self.ct_point is not None and self.cb_point is not None:
+            self._log("Calculating refined CTP404 center using spatial scaling...")
+            x_scale, y_scale, pts = self.ctp404.calculate_spatial_scaling(self.ct_point, self.cb_point)
+            
+            # Refine center using scaling points: c_CTP404 = [np.mean([pts[0],pts[2]]),np.mean([pts[1],pts[3]])]
+            refined_center = [np.mean([pts[0], pts[2]]), np.mean([pts[1], pts[3]])]
+            self._log(f"Original CTP404 center: ({self.module_centers['ctp404'][0]:.1f}, {self.module_centers['ctp404'][1]:.1f})")
+            self._log(f"Refined CTP404 center: ({refined_center[0]:.1f}, {refined_center[1]:.1f})")
+            
+            # Update center and reinitialize CTP404 module with refined center
+            self.module_centers['ctp404'] = refined_center
+            self.ctp404 = CTP404Module(
+                dicom_set=self.dicom_set,
+                slice_index=self.slice_indices['ctp404'],
+                center=refined_center,
+                rotation_offset=self.rotation_offset
+            )
+            self.ctp404.prepare_image()
+            # Restore scaling points since we created a new instance
+            self.ctp404.scaling_points = pts
+        
         # Analyze each module
         self._log("\n\n=== BEGINNING ANALYSIS ===\n")
         
         self._log("--- Analyzing CTP404 (Contrast/Scaling) ---")
         results_404 = self.ctp404.analyze()
+        
+        # Add scaling results if we calculated them earlier
+        if self.ct_point is not None and self.cb_point is not None:
+            results_404['x_scale_cm'] = x_scale
+            results_404['y_scale_cm'] = y_scale
+            self._log(f"X Scale: {x_scale:.2f} cm")
+            self._log(f"Y Scale: {y_scale:.2f} cm")
         
         self._log("\n--- Analyzing CTP486 (Uniformity) ---")
         results_486 = self.ctp486.analyze()
@@ -306,7 +344,11 @@ class CatPhanAnalyzer:
             f.write(f"10% MTF: {self.results['ctp528']['mtf_10']:.3f} lp/mm\n")
             f.write(f"30% MTF: {self.results['ctp528']['mtf_30']:.3f} lp/mm\n")
             f.write(f"50% MTF: {self.results['ctp528']['mtf_50']:.3f} lp/mm\n")
-            f.write(f"80% MTF: {self.results['ctp528']['mtf_80']:.3f} lp/mm\n")
+            f.write(f"80% MTF: {self.results['ctp528']['mtf_80']:.3f} lp/mm\n\n")
+            
+            # Misc Results
+            f.write("----- Misc -----\n")
+            f.write(f"Catphan rotation (deg): {self.rotation_offset:.1f}\n")
         
         self._log(f"Report saved: {report_path}")
         
@@ -319,14 +361,13 @@ class CatPhanAnalyzer:
     
     def _generate_plots(self):
         """
-        Generate visualization plots of the analysis.
+        Generate visualization plots showing DICOM images with ROI overlays.
+        
+        Recreates the original plotting style from processDICOMcat.py
         
         Returns:
             Path to the plot file
         """
-        # Placeholder for plot generation
-        # Would create matplotlib figures showing the modules and results
-        
         ds = self.dicom_set[0]
         date_str = f"{ds.StudyDate[0:4]}-{ds.StudyDate[4:6]}-{ds.StudyDate[6:8]}"
         unit_name = ds.StationName
@@ -334,11 +375,128 @@ class CatPhanAnalyzer:
         plot_filename = f"CatPhan_{unit_name}_{date_str}.png"
         plot_path = self.output_path / plot_filename
         
-        # Create basic plot structure
-        fig, axes = plt.subplots(2, 2, figsize=(15, 15))
-        fig.suptitle(f'CatPhan Analysis - {unit_name}', fontsize=16)
+        # Window/level settings for display
+        window = 1000
+        level = 1000
+        vmin = int(level - window/2)
+        vmax = int(level + window/2)
         
-        # Close the figure
+        # Create figure with 2 columns: left has 2x2 grid, right has 9 stacked plots
+        fig = plt.figure(figsize=(20, 15))
+        gs = fig.add_gridspec(9, 3, width_ratios=[1, 1, 1], hspace=0.3, wspace=0.3)
+        
+        fig.suptitle(f'Unit: {unit_name}, Window/level: {window}/{level}', fontsize=16)
+        
+        # Left column - existing 2x2 plots
+        # Plot 1: CTP528 Resolution Module (top-left)
+        ax1 = fig.add_subplot(gs[0:4, 0])
+        
+        # Get image and plot data from module
+        im_528 = self.ctp528.averaged_image
+        plot_data_528 = self.ctp528.get_plot_data()
+        
+        ax1.imshow(im_528, cmap='gray', vmin=vmin, vmax=vmax)
+        ax1.plot(plot_data_528['lpx'], plot_data_528['lpy'], '-r')
+        ax1.plot(np.array(plot_data_528['outer_boundary'][0]), 
+                np.array(plot_data_528['outer_boundary'][1]), 'r')
+        ax1.set_title('CTP528')
+        ax1.axis('off')
+        
+        # Plot 2: CTP528 MTF Curve (top-middle)
+        ax2 = fig.add_subplot(gs[0:4, 1])
+        
+        mtf_data = plot_data_528['mtf_data']
+        lp = mtf_data['lp']
+        nMTF = mtf_data['nMTF']
+        nMTF50 = self.results['ctp528']['mtf_50']
+        nMTF10 = self.results['ctp528']['mtf_10']
+        
+        ax2.plot(lp, nMTF)
+        ax2.plot([nMTF50, nMTF10], [0.5, 0.1], 'or', mfc='none')
+        ax2.set_title(f'10% MTF = {nMTF10:.3f} lp/mm')
+        ax2.set_ylabel('Normalized MTF')
+        ax2.set_xlabel('lp/mm')
+        ax2.grid()
+        
+        # Plot 3: CTP404 Contrast Module (bottom-left)
+        ax3 = fig.add_subplot(gs[5:9, 0])
+        
+        im_404 = self.ctp404.averaged_image
+        plot_data_404 = self.ctp404.get_plot_data()
+        
+        ax3.imshow(im_404, cmap='gray', vmin=vmin, vmax=vmax)
+        
+        # Plot all ROI circles
+        roi_coords = plot_data_404['roi_coordinates']
+        if roi_coords:
+            for roi_x, roi_y in roi_coords:
+                ax3.plot(roi_x, roi_y, 'r')
+        
+        # Plot scaling points
+        pts = plot_data_404['scaling_points']
+        if pts and len(pts) >= 4 and len(pts[0]) > 0:
+            ax3.plot(pts[0], pts[1], 'g')
+            ax3.plot(pts[2], pts[3], 'g')
+        
+        # Plot outer boundary
+        ax3.plot(np.array(plot_data_404['outer_boundary'][0]), 
+                np.array(plot_data_404['outer_boundary'][1]), 'r')
+        
+        ax3.set_title('CTP404')
+        ax3.axis('off')
+        
+        # Plot 4: CTP486 Uniformity Module (bottom-middle)
+        ax4 = fig.add_subplot(gs[5:9, 1])
+        
+        im_486 = self.ctp486.averaged_image
+        plot_data_486 = self.ctp486.get_plot_data()
+        
+        ax4.imshow(im_486, cmap='gray', vmin=vmin, vmax=vmax)
+        
+        # Plot outer boundary
+        ax4.plot(np.array(plot_data_486['outer_boundary'][0]), 
+                np.array(plot_data_486['outer_boundary'][1]), 'r')
+        
+        # Plot ROI boxes with different colors
+        roi_boxes = plot_data_486['roi_boxes']
+        roi_colors = {'centre': 'yellow', 'north': 'cyan', 'south': 'magenta', 
+                      'east': 'green', 'west': 'orange'}
+        roi_labels = ['Centre', 'North', 'South', 'East', 'West']
+        
+        if roi_boxes:
+            for i, box in enumerate(roi_boxes):
+                # box format: [x_start, x_end, y_start, y_end]
+                x0, x1, y0, y1 = box
+                region_name = self.ctp486.REGIONS[i]
+                color = roi_colors[region_name]
+                label = roi_labels[i]
+                
+                ax4.plot([x0, x0], [y0, y1], color=color, linewidth=2, label=label)
+                ax4.plot([x1, x1], [y0, y1], color=color, linewidth=2)
+                ax4.plot([x0, x1], [y0, y0], color=color, linewidth=2)
+                ax4.plot([x0, x1], [y1, y1], color=color, linewidth=2)
+        
+        ax4.legend(loc='upper right', fontsize=8)
+        ax4.set_title('CTP486')
+        ax4.axis('off')
+        
+        # Right column - Line pair profiles (9 stacked plots sharing x-axis)
+        profiles = plot_data_528.get('line_pair_profiles')
+        if profiles and len(profiles) == 9:
+            for i in range(9):
+                ax = fig.add_subplot(gs[i, 2])
+                ax.plot(profiles[i], 'b-', linewidth=0.8)
+                ax.set_ylabel(f'LP{i+1}', fontsize=8)
+                ax.tick_params(axis='both', labelsize=7)
+                ax.grid(True, alpha=0.3)
+                
+                # Only show x-axis label on bottom plot
+                if i < 8:
+                    ax.set_xticklabels([])
+                else:
+                    ax.set_xlabel('Position', fontsize=8)
+        
+        # Save figure
         plt.savefig(plot_path)
         plt.close()
         

@@ -1,5 +1,16 @@
 # CatPhan Analysis - Class Architecture
 
+**Version 1.0 - Working Release**
+
+This document describes the object-oriented architecture that replaces the procedural processDICOMcat2.py implementation while maintaining numerical accuracy.
+
+## Design Principles
+
+1. **Separation of Concerns**: Each module (CTP404, CTP486, CTP528) is independent
+2. **Architectural Purity**: Modules don't know how to locate themselves (SliceLocator handles this)
+3. **Algorithm Fidelity**: All calculations match the reference implementation
+4. **Reusability**: Classes can be used independently or orchestrated by CatPhanAnalyzer
+
 ## Class Hierarchy Overview
 
 ```

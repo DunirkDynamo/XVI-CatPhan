@@ -1,8 +1,25 @@
 # CatPhan Analysis Package - Refactoring Summary
 
+## Version 1.0 - Working Release
+
+Successfully refactored procedural CatPhan analysis scripts into a professional, object-oriented software package with **validated numerical accuracy** against the reference implementation (processDICOMcat2.py).
+
+## Validation Status
+
+✅ **All analysis modules produce matching results:**
+- CTP404: Contrast, HU accuracy, spatial scaling, slice thickness
+- CTP486: Uniformity (center, north, south, east, west regions)
+- CTP528: MTF values at 10%, 30%, 50%, 80%
+
+✅ **Algorithms verified:**
+- Rotation calculation with proper pixel spacing conversion
+- Module location with correct distances (CTP404: +30mm, CTP486: -80mm from CTP528)
+- 3-slice intelligent averaging for optimal contrast
+- MTF line pair analysis with correct angles (including 40° correction for second line pair)
+
 ## Overview
 
-Successfully refactored procedural CatPhan analysis scripts into a professional, object-oriented software package. The original scripts (`analyzeDICOM_Catphan.py` and `processDICOMcat.py`) have been transformed into a modular, maintainable package with clear class hierarchies and separation of concerns.
+The original scripts (`analyzeDICOM_Catphan.py` and `processDICOMcat2.py`) have been transformed into a modular, maintainable package with clear class hierarchies and separation of concerns, while preserving exact numerical fidelity to the original algorithms.
 
 ## Package Structure
 
@@ -22,13 +39,15 @@ xvicatphan/
 │       ├── geometry.py           # Geometric calculations
 │       └── image_processing.py   # Image utilities
 ├── main.py                       # CLI for analysis
+├── select_and_analyze.py         # GUI folder selection
 ├── listen_and_analyze.py         # CLI for DICOM listener
 ├── examples.py                   # Usage examples
 ├── README.md                     # Documentation
 ├── requirements.txt              # Dependencies
 ├── setup.py                      # Package installation
 ├── analyzeDICOM_Catphan.py      # [ORIGINAL - kept for reference]
-└── processDICOMcat.py           # [ORIGINAL - kept for reference]
+├── processDICOMcat.py           # [LEGACY - kept for reference]
+└── processDICOMcat2.py          # [REFERENCE IMPLEMENTATION]
 ```
 
 ## Key Classes
@@ -263,13 +282,38 @@ ctp528 = CTP528Module(dicom_set, idx, center, rotation)
 
 ## Testing
 
-The package includes `examples.py` with multiple usage patterns:
+The package has been validated against processDICOMcat2.py with identical numerical results for:
+- All CTP404 measurements (contrast, HU, scaling, slice thickness)
+- All CTP486 uniformity regions
+- All CTP528 MTF values
+
+See examples.py for multiple usage patterns:
 
 1. **Basic complete analysis**
 2. **Step-by-step analysis**
 3. **Individual module usage**
 4. **Custom workflows**
 5. **Batch processing**
+
+## Key Corrections Made During Development
+
+### Algorithm Fixes
+1. **Rotation Calculation**: Added pixel_spacing parameter to convert 58.5mm ring radius to pixels correctly
+2. **CTP404 Location**: Corrected distance from +30mm (not -30mm) relative to CTP528
+3. **CTP528 Angles**: Fixed second line pair angle from 38° to 40°
+4. **Array Boolean Checks**: Changed `if array:` to `if array is not None:` to avoid numpy warnings
+5. **Slice Selection for CTP528 Center**: Now uses intelligent 3-slice selection instead of fixed [-1,0,+1]
+
+### Architectural Improvements
+1. **Slice Selection**: Moved from CTP528Module to CatPhanGeometry utilities (modules shouldn't locate themselves)
+2. **Scaling Points Preservation**: Store and restore after CTP404 module reinitialization for green crosshair visualization
+3. **Line Pair Profile Storage**: Added profile storage for visualization in output plots
+
+### Reference Values (from processDICOMcat2.py)
+- CTP528 expected slice: 60 (not 61)
+- CTP528 thresholds: thres1=100, thres2=50 (not 35/18)
+- CTP486 distance: -80mm from CTP528 (not -110mm)
+- No +2048 offset in interpolation (removed)
 
 ## Installation
 

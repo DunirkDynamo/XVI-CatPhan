@@ -1,0 +1,494 @@
+
+Slice 87
+
+Slice 88
+
+Slice 86
+
+Slice 89
+
+Slice 85
+--- Parsing through each slice to find module CTP528 ---
+
+Slice 1
+
+Slice 2
+
+Slice 3
+
+Slice 4
+
+Slice 5
+
+Slice 6
+
+Slice 7
+
+Slice 8
+
+Slice 9
+
+Slice 10
+
+Slice 11
+
+Slice 12
+
+Slice 13
+
+Slice 14
+
+Slice 15
+
+Slice 16
+
+Slice 17
+
+Slice 18
+
+Slice 19
+
+Slice 20
+
+Slice 21
+
+Slice 22
+
+Slice 23
+
+Slice 24
+
+Slice 25
+
+Slice 26
+
+Slice 27
+
+Slice 28
+
+Slice 29
+
+Slice 30
+
+Slice 31
+
+Slice 32
+
+Slice 33
+
+Slice 34
+
+Slice 35
+
+Slice 36
+
+Slice 37
+
+Slice 38
+
+Slice 39
+
+Slice 40
+
+Slice 41
+
+Slice 42
+
+Slice 43
+
+Slice 44
+
+Slice 45
+
+Slice 46
+
+Slice 47
+
+Slice 48
+
+Slice 49
+
+Slice 50
+
+Slice 51
+
+Slice 52
+
+Slice 53
+
+Slice 54
+
+Slice 55
+
+Slice 56
+
+Slice 57
+
+Slice 58
+
+Slice 59
+
+Slice 60
+
+--- Performing 3-slice averaging of CTP528 module
+Interpolating line pair profiles...
+Calculating 3-slice average for CTP528
+3-slice average for CTP528 complete.
+
+
+------------------------------------------------------
+
+--- Finding CTP404 and CTP486 modules...
+Note: Z slice number is decreasing.
+
+
+------------------------------------------------------
+
+--- Finding centre of each module based on outer surface of CatPhan...
+Finding centre of CTP528 module
+Finding centre of CTP404 module
+Finding centre of CTP486 module
+
+
+------------------------------------------------------
+
+--- Finding CatPhan rotation in CTP404 module
+Will assume same rotation for other two modules.
+
+Iteration 1
+Interpolating profiles across top and bottom air ROIs...
+Taking derivative of profiles...
+Finding peaks of derivatives which correspond to CatPhan edges...
+If failing here, may need to change threshold for peak finding algorithm...
+Now finding centre of top and bottom air ROIs...
+Iteration 2
+Interpolating profiles across top and bottom air ROIs...
+Taking derivative of profiles...
+Finding peaks of derivatives which correspond to CatPhan edges...
+If failing here, may need to change threshold for peak finding algorithm...
+Now finding centre of top and bottom air ROIs...
+Iteration 3
+Interpolating profiles across top and bottom air ROIs...
+Taking derivative of profiles...
+Finding peaks of derivatives which correspond to CatPhan edges...
+If failing here, may need to change threshold for peak finding algorithm...
+Now finding centre of top and bottom air ROIs...
+Iteration 4
+Interpolating profiles across top and bottom air ROIs...
+Taking derivative of profiles...
+Finding peaks of derivatives which correspond to CatPhan edges...
+If failing here, may need to change threshold for peak finding algorithm...
+Now finding centre of top and bottom air ROIs...
+Iteration 5
+Interpolating profiles across top and bottom air ROIs...
+Taking derivative of profiles...
+Finding peaks of derivatives which correspond to CatPhan edges...
+If failing here, may need to change threshold for peak finding algorithm...
+Now finding centre of top and bottom air ROIs...
+
+Calculating rotation between top and bottom air ROIs...
+Rotation = -0.3672756073380945 deg 
+
+
+------------------------------------------------------
+
+
+--- Analyzing CTP404 module
+First calculating X/Y/Z scaling...
+Analyzing rest of CTP404 module...
+Deriving 3-slice averaged image
+Generating masks for each contrast ROI
+Mask 1...
+Mask 2...
+Mask 3...
+Mask 4...
+Mask 5...
+Mask 6...
+Mask 7...
+Mask 8...
+Mask 9...
+Calculating mean and std of each ROI
+Generating traces of each ROI for visual purposes
+Calculating scaling factor based on top/bottom and left/right ROIs...
+Grabbing profiles and derivatives for T/B and L/R ROIs
+Finding ROI edge points for scaling calculation
+Calculating x and y scaling factors
+CTP404 complete with no errors.
+
+
+------------------------------------------------------
+
+
+--- Analyzing CTP486 module
+Deriving 3-slice averaged image
+Defining centre and top/bottom/left/right box ROIs
+Generating mask for each box
+Pulling pixel values from each ROI using masks
+Calculating uniformity
+CTP486 complete with no errors.
+
+
+------------------------------------------------------
+
+
+--- Analyzing CTP528 module
+Drawing profiles through each line pair, up to 10th pair
+
+Analyzing line pair 1
+...Interpolating across line pair
+...Taking derivative and finding peaks
+...Taking minima/maxima of profiles located at derivative peak locations
+...Calculating MTF for this line pair
+
+Analyzing line pair 2
+...Interpolating across line pair
+...Taking derivative and finding peaks
+...Taking minima/maxima of profiles located at derivative peak locations
+...Calculating MTF for this line pair
+
+Analyzing line pair 3
+...Interpolating across line pair
+...Taking derivative and finding peaks
+...Taking minima/maxima of profiles located at derivative peak locations
+...Calculating MTF for this line pair
+
+Analyzing line pair 4
+...Interpolating across line pair
+...Taking derivative and finding peaks
+...Taking minima/maxima of profiles located at derivative peak locations
+...Calculating MTF for this line pair
+
+Analyzing line pair 5
+...Interpolating across line pair
+...Taking derivative and finding peaks
+...Taking minima/maxima of profiles located at derivative peak locations
+...Calculating MTF for this line pair
+
+Analyzing line pair 6
+...Interpolating across line pair
+...Taking derivative and finding peaks
+...Taking minima/maxima of profiles located at derivative peak locations
+...Calculating MTF for this line pair
+
+Analyzing line pair 7
+...Interpolating across line pair
+...Taking derivative and finding peaks
+...Taking minima/maxima of profiles located at derivative peak locations
+...Calculating MTF for this line pair
+
+Analyzing line pair 8
+...Interpolating across line pair
+...Taking derivative and finding peaks
+...Cannot resolve line pair 8
+...Assigning MTF = 0 for this line pair
+
+Analyzing line pair 9
+...Interpolating across line pair
+...Taking derivative and finding peaks
+...Cannot resolve line pair 9
+...Assigning MTF = 0 for this line pair
+
+Normalizing MTF function
+CTP528 complete with no errors.
+
+
+------------------------------------------------------
+
+
+--- Generating plots
+...Plot 1 - CTP528 image
+...Plot 2 - CTP528 MTF
+...Plot 3 - CTP404 image
+...Plot 4 - CTP486 image
+
+
+------------------------------------------------------
+Writing results to CatPhan_Results.txt file
+
+
+CatPhan analysis complete.
+Plots saved as CatPhan_results/CatPhan_XVI_UNIT_7_2025-12-04.png
+Results saved as CatPhan_results/CatPhan_XVI_UNIT_7_2025-12-04.txt
+
+Slice 61
+CTP528 module located: Slice 61
+
+--- Performing 3-slice averaging of CTP528 module
+Interpolating line pair profiles...
+Calculating 3-slice average for CTP528
+3-slice average for CTP528 complete.
+
+
+------------------------------------------------------
+
+--- Finding CTP404 and CTP486 modules...
+Note: Z slice number is decreasing.
+
+
+------------------------------------------------------
+
+--- Finding centre of each module based on outer surface of CatPhan...
+Finding centre of CTP528 module
+Finding centre of CTP404 module
+Finding centre of CTP486 module
+
+
+------------------------------------------------------
+
+--- Finding CatPhan rotation in CTP404 module
+Will assume same rotation for other two modules.
+
+Iteration 1
+Interpolating profiles across top and bottom air ROIs...
+Taking derivative of profiles...
+Finding peaks of derivatives which correspond to CatPhan edges...
+If failing here, may need to change threshold for peak finding algorithm...
+Now finding centre of top and bottom air ROIs...
+Iteration 2
+Interpolating profiles across top and bottom air ROIs...
+Taking derivative of profiles...
+Finding peaks of derivatives which correspond to CatPhan edges...
+If failing here, may need to change threshold for peak finding algorithm...
+Now finding centre of top and bottom air ROIs...
+Iteration 3
+Interpolating profiles across top and bottom air ROIs...
+Taking derivative of profiles...
+Finding peaks of derivatives which correspond to CatPhan edges...
+If failing here, may need to change threshold for peak finding algorithm...
+Now finding centre of top and bottom air ROIs...
+Iteration 4
+Interpolating profiles across top and bottom air ROIs...
+Taking derivative of profiles...
+Finding peaks of derivatives which correspond to CatPhan edges...
+If failing here, may need to change threshold for peak finding algorithm...
+Now finding centre of top and bottom air ROIs...
+Iteration 5
+Interpolating profiles across top and bottom air ROIs...
+Taking derivative of profiles...
+Finding peaks of derivatives which correspond to CatPhan edges...
+If failing here, may need to change threshold for peak finding algorithm...
+Now finding centre of top and bottom air ROIs...
+
+Calculating rotation between top and bottom air ROIs...
+Rotation = -0.3672756073380945 deg 
+
+
+------------------------------------------------------
+
+
+--- Analyzing CTP404 module
+First calculating X/Y/Z scaling...
+Analyzing rest of CTP404 module...
+Deriving 3-slice averaged image
+Generating masks for each contrast ROI
+Mask 1...
+Mask 2...
+Mask 3...
+Mask 4...
+Mask 5...
+Mask 6...
+Mask 7...
+Mask 8...
+Mask 9...
+Calculating mean and std of each ROI
+Generating traces of each ROI for visual purposes
+Calculating scaling factor based on top/bottom and left/right ROIs...
+Grabbing profiles and derivatives for T/B and L/R ROIs
+Finding ROI edge points for scaling calculation
+Calculating x and y scaling factors
+CTP404 complete with no errors.
+
+
+------------------------------------------------------
+
+
+--- Analyzing CTP486 module
+Deriving 3-slice averaged image
+Defining centre and top/bottom/left/right box ROIs
+Generating mask for each box
+Pulling pixel values from each ROI using masks
+Calculating uniformity
+CTP486 complete with no errors.
+
+
+------------------------------------------------------
+
+
+--- Analyzing CTP528 module
+Drawing profiles through each line pair, up to 10th pair
+
+Analyzing line pair 1
+...Interpolating across line pair
+...Taking derivative and finding peaks
+...Taking minima/maxima of profiles located at derivative peak locations
+...Calculating MTF for this line pair
+
+Analyzing line pair 2
+...Interpolating across line pair
+...Taking derivative and finding peaks
+...Taking minima/maxima of profiles located at derivative peak locations
+...Calculating MTF for this line pair
+
+Analyzing line pair 3
+...Interpolating across line pair
+...Taking derivative and finding peaks
+...Taking minima/maxima of profiles located at derivative peak locations
+...Calculating MTF for this line pair
+
+Analyzing line pair 4
+...Interpolating across line pair
+...Taking derivative and finding peaks
+...Taking minima/maxima of profiles located at derivative peak locations
+...Calculating MTF for this line pair
+
+Analyzing line pair 5
+...Interpolating across line pair
+...Taking derivative and finding peaks
+...Taking minima/maxima of profiles located at derivative peak locations
+...Calculating MTF for this line pair
+
+Analyzing line pair 6
+...Interpolating across line pair
+...Taking derivative and finding peaks
+...Taking minima/maxima of profiles located at derivative peak locations
+...Calculating MTF for this line pair
+
+Analyzing line pair 7
+...Interpolating across line pair
+...Taking derivative and finding peaks
+...Taking minima/maxima of profiles located at derivative peak locations
+...Calculating MTF for this line pair
+
+Analyzing line pair 8
+...Interpolating across line pair
+...Taking derivative and finding peaks
+...Cannot resolve line pair 8
+...Assigning MTF = 0 for this line pair
+
+Analyzing line pair 9
+...Interpolating across line pair
+...Taking derivative and finding peaks
+...Cannot resolve line pair 9
+...Assigning MTF = 0 for this line pair
+
+Normalizing MTF function
+CTP528 complete with no errors.
+
+
+------------------------------------------------------
+
+
+--- Generating plots
+...Plot 1 - CTP528 image
+...Plot 2 - CTP528 MTF
+...Plot 3 - CTP404 image
+...Plot 4 - CTP486 image
+
+
+------------------------------------------------------
+Writing results to CatPhan_Results.txt file
+
+
+CatPhan analysis complete.
+Plots saved as CatPhan_results/CatPhan_XVI_UNIT_7_2025-12-04.png
+Results saved as CatPhan_results/CatPhan_XVI_UNIT_7_2025-12-04.txt
