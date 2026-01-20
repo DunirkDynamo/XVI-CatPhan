@@ -8,6 +8,21 @@ A professional, object-oriented software package for analyzing CatPhan phantom D
 
 This package has been validated against the original reference implementation (processDICOMcat2.py) and produces matching results for all analysis modules.
 
+## Quick Start
+
+**For Non-Technical Users (No Python Required):**
+
+Download `CatPhanAnalyzer.exe` and double-click to run. A folder picker will open - select your DICOM folder and analysis runs automatically.
+
+**For Python Users:**
+
+```bash
+pip install -e .
+catphan-select  # Opens GUI folder picker
+```
+
+See [INSTALLATION.md](INSTALLATION.md) for detailed installation options.
+
 ## Features
 
 - **Modular Architecture**: Each analysis module (CTP404, CTP486, CTP528) is implemented as a separate class
@@ -40,13 +55,22 @@ catphan_analysis/
 
 ## Installation
 
+### Option 1: Standalone Executable (Recommended for Clinical Users)
+
+No Python installation required. Download `CatPhanAnalyzer.exe` and run it.
+
+### Option 2: Python Package Installation
+
 ```bash
 # Install dependencies
 pip install numpy scipy matplotlib pydicom
 
-# Or install from requirements.txt
-pip install -r requirements.txt
+# Install the package
+cd /path/to/xvicatphan
+pip install -e .
 ```
+
+**See [INSTALLATION.md](INSTALLATION.md) for complete installation instructions and troubleshooting.**
 
 ## Usage
 

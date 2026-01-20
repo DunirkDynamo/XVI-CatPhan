@@ -2,6 +2,16 @@
 
 This guide explains the different ways you can use this package to analyze CatPhan phantom images.
 
+## Choosing Your Method
+
+**No Python? Use the Executable** - Download `CatPhanAnalyzer.exe`, double-click, and go.
+
+**Have Python? Multiple Options** - GUI, command-line, or automated listener.
+
+See [INSTALLATION.md](INSTALLATION.md) for installation details.
+
+---
+
 ## Installation
 
 **Important:** Install the package properly to avoid naming conflicts and get convenient command-line tools.
@@ -29,7 +39,39 @@ python select_and_analyze.py
 
 ---
 
-## Three Ways to Use This Package
+## Using the Package
+
+### Method 0: Standalone Executable (No Python Required)
+
+**Best for:** Clinical users without Python installed
+
+**Requirements:** None - completely standalone
+
+**How to use:**
+
+1. Download `CatPhanAnalyzer.exe` from releases or build directory
+2. (Optional) Create a desktop shortcut or copy to preferred location
+3. Double-click `CatPhanAnalyzer.exe`
+4. A folder browser window will appear
+5. Navigate to the folder containing your CatPhan DICOM files
+6. Click "Select Folder"
+7. Analysis runs automatically
+8. Results are saved in the same folder:
+   - `CatPhan_results.png` - Visualization plots
+   - `CatPhan_results.txt` - Text report
+   - `ScriptLog.txt` - Processing log
+
+**When to use this:**
+- You don't have Python installed
+- You want the simplest possible setup
+- You prefer a standalone application
+- You're distributing to clinical staff
+
+**Note:** The executable is ~50-100 MB but requires no additional setup.
+
+---
+
+## Three Ways to Use (Python Package)
 
 ### 1. GUI Folder Selection (Easiest for One-Time Analysis)
 
