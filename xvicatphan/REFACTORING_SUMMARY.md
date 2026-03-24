@@ -1,3 +1,4 @@
+
 # CatPhan Analysis Package - Refactoring Summary
 
 ## Version 1.0 - Working Release
@@ -29,25 +30,20 @@ xvicatphan/
 │   ├── __init__.py               # Package exports
 │   ├── analyzer.py               # Executive CatPhanAnalyzer class
 │   ├── dicom_listener.py         # DICOM monitoring classes
-│   ├── modules/                  # Analysis module classes
-│   │   ├── __init__.py
-│   │   ├── ctp404.py            # Contrast/linearity module
-│   │   ├── ctp486.py            # Uniformity module
-│   │   └── ctp528.py            # Resolution module
 │   └── utils/                    # Utility classes
 │       ├── __init__.py
 │       ├── geometry.py           # Geometric calculations
 │       └── image_processing.py   # Image utilities
 ├── main.py                       # CLI for analysis
-├── select_and_analyze.py         # GUI folder selection
-├── listen_and_analyze.py         # CLI for DICOM listener
+├── catphan_analysis/select_and_analyze.py         # GUI folder selection
+├── catphan_analysis/listen_and_analyze.py         # CLI for DICOM listener
 ├── examples.py                   # Usage examples
 ├── README.md                     # Documentation
 ├── requirements.txt              # Dependencies
-├── setup.py                      # Package installation
-├── analyzeDICOM_Catphan.py      # [ORIGINAL - kept for reference]
-├── processDICOMcat.py           # [LEGACY - kept for reference]
-└── processDICOMcat2.py          # [REFERENCE IMPLEMENTATION]
+├── pyproject.toml                # Package installation
+├── analyzeDICOM_Catphan.py       # [ORIGINAL - kept for reference]
+├── processDICOMcat.py            # [LEGACY - kept for reference]
+└── processDICOMcat2.py           # [REFERENCE IMPLEMENTATION]
 ```
 
 ## Key Classes
@@ -62,7 +58,7 @@ The main coordinator class that manages the entire analysis workflow.
 - `load_dicom_files()` - Load and sort DICOM files
 - `locate_modules()` - Find CTP404, CTP486, CTP528 slices
 - `find_module_centers()` - Correct for setup errors
-- `find_rotation()` - Determine phantom rotation
+- rotation detection: handled by `CTP404Analyzer.detect_rotation()` (use `CatPhanAnalyzer.run_ctp404()` or `CatPhanAnalyzer.analyze()`)
 - `initialize_modules()` - Create module class instances
 - `analyze()` - Run complete analysis
 - `generate_report()` - Create output files
@@ -76,41 +72,42 @@ analyzer.generate_report()
 analyzer.close_log()
 ```
 
-### 2. Analysis Module Classes
+### 2. Analysis Module Classes (Alexandria)
 
-#### `CTP404Module`
-**File:** `catphan_analysis/modules/ctp404.py`
+The analysis modules are sourced from the Alexandria library and instantiated
+by `CatPhanAnalyzer`.
+
+#### `CTP404Analyzer`
+**Library:** `alexandria`
 
 Analyzes the contrast and spatial linearity module.
 
 **Key Methods:**
-- `prepare_image()` - 3-slice averaging
-- `analyze_contrast()` - Measure HU values for materials
-- `calculate_low_contrast_visibility()` - LCV metric
-- `calculate_spatial_scaling()` - X/Y scaling verification
-- `measure_slice_thickness()` - Slice thickness from wire ramp
 - `analyze()` - Complete analysis
 
-#### `CTP486Module`
-**File:** `catphan_analysis/modules/ctp486.py`
+#### `UniformityAnalyzer`
+**Library:** `alexandria`
 
-Analyzes the uniformity module.
+Analyzes the uniformity module (5-region analysis).
 
 **Key Methods:**
-- `prepare_image()` - 3-slice averaging
-- `analyze_uniformity()` - 5-region uniformity analysis
 - `analyze()` - Complete analysis
-- `get_results_summary()` - Formatted results
 
-#### `CTP528Module`
-**File:** `catphan_analysis/modules/ctp528.py`
+#### `DetailedUniformityAnalyzer`
+**Library:** `alexandria`
 
-Analyzes the line pair resolution module.
+Analyzes detailed uniformity profiles across concentric radii.
 
 **Key Methods:**
-- `select_optimal_slices()` - Choose best slices for averaging
-- `analyze()` - MTF calculation
-- `get_results_summary()` - MTF values at 10%, 30%, 50%, 80%
+- `analyze()` - Complete analysis
+
+#### `HighContrastAnalyzer`
+**Library:** `alexandria`
+
+Analyzes the line pair resolution module (MTF).
+
+**Key Methods:**
+- `analyze()` - Complete analysis
 
 ### 3. Utility Classes
 
@@ -121,7 +118,8 @@ Geometric operations for phantom positioning.
 
 **Static Methods:**
 - `find_center(image)` - Find phantom center
-- `find_rotation(image, center)` - Determine rotation angle
+ - `find_rotation(image, center)` - Determine rotation angle (now a thin wrapper that delegates
+     to `alexandria.utils.find_rotation` to centralize rotation-detection logic)
 - `find_slice_ctp528(dicom_set)` - Locate CTP528 slice
 - `calculate_slice_thickness(image)` - Slice thickness measurement
 
@@ -181,19 +179,18 @@ analyzer.close_log()
 ### Command Line
 ```bash
 # Analyze DICOM files
-python main.py /path/to/dicom/files
+catphan-analyze /path/to/dicom/files
 
 # Run DICOM listener
-python listen_and_analyze.py /path/to/receiver
+python -m catphan_analysis.listen_and_analyze /path/to/receiver
 ```
 
 ### Individual Module
 ```python
-from catphan_analysis.modules import CTP404Module
+from alexandria import CTP404Analyzer
 
-ctp404 = CTP404Module(dicom_set, slice_idx, center, rotation)
+ctp404 = CTP404Analyzer(dicom_set, slice_idx, center, rotation)
 results = ctp404.analyze()
-summary = ctp404.get_results_summary()
 ```
 
 ### Step-by-Step
@@ -202,12 +199,14 @@ analyzer = CatPhanAnalyzer('/path/to/dicom')
 analyzer.load_dicom_files()
 analyzer.locate_modules()
 analyzer.find_module_centers()
-analyzer.find_rotation()
+# Rotation detection is now performed by the CTP404 analyzer; run it with:
+analyzer.run_ctp404()
 analyzer.initialize_modules()
 
 # Access individual modules
 ctp404_results = analyzer.ctp404.analyze()
 ctp486_results = analyzer.ctp486.analyze()
+ctp486_detailed_results = analyzer.ctp486_detailed.analyze()
 ctp528_results = analyzer.ctp528.analyze()
 ```
 
@@ -264,7 +263,7 @@ def main(mainpath):
     results_CTP528 = analysis_CTP528(data, im, c, t_offset)
 ```
 
-**New (Object-Oriented):**
+**New (Object-Oriented + Alexandria Modules):**
 ```python
 # DICOM Listener
 listener = DICOMListener(base_path)
@@ -274,10 +273,11 @@ listener.start()
 analyzer = CatPhanAnalyzer(dicom_path)
 analyzer.analyze()
 
-# Or use modules individually
-ctp404 = CTP404Module(dicom_set, idx, center, rotation)
-ctp486 = CTP486Module(dicom_set, idx, center)
-ctp528 = CTP528Module(dicom_set, idx, center, rotation)
+# Or use modules individually (Alexandria)
+ctp404 = CTP404Analyzer(dicom_set, idx, center, rotation)
+ctp486 = UniformityAnalyzer(dicom_set, idx, center)
+ctp486_detailed = DetailedUniformityAnalyzer(dicom_set, idx, center)
+ctp528 = HighContrastAnalyzer(dicom_set, idx, center)
 ```
 
 ## Testing
@@ -305,9 +305,12 @@ See examples.py for multiple usage patterns:
 5. **Slice Selection for CTP528 Center**: Now uses intelligent 3-slice selection instead of fixed [-1,0,+1]
 
 ### Architectural Improvements
-1. **Slice Selection**: Moved from CTP528Module to CatPhanGeometry utilities (modules shouldn't locate themselves)
+1. **Slice Selection**: Centralized in CatPhanGeometry utilities
 2. **Scaling Points Preservation**: Store and restore after CTP404 module reinitialization for green crosshair visualization
 3. **Line Pair Profile Storage**: Added profile storage for visualization in output plots
+4. **Module Refactor**: Analysis modules migrated to Alexandria for shared reuse
+5. **Detailed Uniformity**: Added CTP486 detailed profiles and CTP486_Detailed plot output
+6. **DICOM Sorting Fallbacks**: Uses ImagePositionPatient/InstanceNumber when SliceLocation is missing
 
 ### Reference Values (from processDICOMcat2.py)
 - CTP528 expected slice: 60 (not 61)
@@ -331,7 +334,7 @@ After installation, two commands are available:
 
 ```bash
 # Analyze DICOM files
-catphan-analyze /path/to/dicom
+catphan-select
 
 # Run DICOM listener
 catphan-listen /path/to/receiver
@@ -341,7 +344,7 @@ catphan-listen /path/to/receiver
 
 The refactoring successfully transforms procedural scripts into a professional software package:
 
-✓ **Modular architecture** - Each analysis module is a class  
+✓ **Modular architecture** - Alexandria analyzers handle core analysis  
 ✓ **Executive class** - CatPhanAnalyzer coordinates everything  
 ✓ **Clear separation** - Analysis, utilities, and I/O separated  
 ✓ **Maintainable** - Well-organized, documented code  

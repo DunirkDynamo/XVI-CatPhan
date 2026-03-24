@@ -36,13 +36,13 @@ You can also use the command-line interface:
 .. code-block:: bash
 
    # Basic analysis
-   python main.py /path/to/dicom/files
+   catphan-analyze /path/to/dicom/files
 
    # With output directory
-   python main.py /path/to/dicom/files --output /path/to/output
+   catphan-analyze /path/to/dicom/files --output /path/to/output
 
    # Specify CatPhan model
-   python main.py /path/to/dicom/files --model 504
+   catphan-analyze /path/to/dicom/files --model 504
 
 Automated DICOM Listening
 --------------------------
@@ -51,7 +51,7 @@ For automated processing of incoming DICOM files:
 
 .. code-block:: bash
 
-   python listen_and_analyze.py /path/to/dicom/receiver
+   python -m catphan_analysis.listen_and_analyze /path/to/dicom/receiver
 
 This will monitor the directory for new DICOM files and automatically trigger analysis when files are received.
 

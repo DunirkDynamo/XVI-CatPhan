@@ -126,7 +126,7 @@ python -c "from catphan_analysis import CatPhanAnalyzer; print('Success!')"
 **Command not found: catphan-select**
 - Ensure pip install location is in PATH
 - Try: `python -m pip install --user -e .`
-- Or run directly: `python select_and_analyze.py`
+- Or run directly: `python -m catphan_analysis.select_and_analyze`
 
 **Import errors:**
 ```bash
@@ -226,9 +226,9 @@ cd /path/to/xvicatphan
 pip install numpy scipy matplotlib pydicom
 
 # Run scripts directly
-python select_and_analyze.py           # GUI
-python main.py /path/to/dicom          # Command-line
-python listen_and_analyze.py /path     # Listener
+python -m catphan_analysis.select_and_analyze           # GUI
+catphan-analyze /path/to/dicom          # Command-line
+python -m catphan_analysis.listen_and_analyze /path     # Listener
 ```
 
 **Note:** Console commands (`catphan-select`, etc.) won't be available without installation.

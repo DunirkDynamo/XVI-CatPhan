@@ -13,9 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Modular analysis classes: `CTP404Module`, `CTP486Module`, `CTP528Module`
 - Utility classes: `CatPhanGeometry`, `SliceLocator`, `ImageProcessor`
 - Three usage modes:
-  - GUI folder selection (`select_and_analyze.py` / `catphan-select`)
+  - GUI folder selection (`catphan_analysis.select_and_analyze` / `catphan-select`)
   - Command-line analysis (`main.py` / `catphan-analyze`)
-  - Automated DICOM listener (`listen_and_analyze.py` / `catphan-listen`)
+  - Automated DICOM listener (`catphan_analysis.listen_and_analyze` / `catphan-listen`)
 - Console entry points for easy installation: `catphan-select`, `catphan-analyze`, `catphan-listen`
 - Comprehensive documentation:
   - `HOW_TO_USE.md` - User guide for all three usage modes
@@ -55,9 +55,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CTP404 distance: +30mm from CTP528
 - No +2048 interpolation offset
 
-## [Unreleased]
+## [Unreleased] - 2026-02-23
 
-### Future Enhancements
+### Added
+- Alexandria-based analyzers and plotters wired into `CatPhanAnalyzer`
+- Detailed uniformity analysis and plot output (`CTP486_Detailed`)
+- Console entry points for GUI select and listener (`catphan-select`, `catphan-listen`)
+
+### Changed
+- Module analysis now delegates to Alexandria analyzers for CTP404, CTP486, CTP528
+- CLI selection/listening scripts moved under `catphan_analysis` package
+- Report schema normalized for uniformity results in outputs
+
+### Fixed
+- DICOM sorting fallback uses ImagePositionPatient or InstanceNumber when SliceLocation is missing
+
+### Future Enhancements (Suggestions, not plans)
 - CatPhan-600 support
 - Additional phantom models
 - PDF report generation

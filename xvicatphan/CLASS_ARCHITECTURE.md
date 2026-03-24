@@ -50,7 +50,7 @@ catphan_analysis/
 │  + load_dicom_files() → int                                │
 │  + locate_modules() → dict                                 │
 │  + find_module_centers() → dict                            │
-│  + find_rotation() → float                                 │
+│  + rotation detection handled by CTP404Analyzer (use run_ctp404()) │
 │  + initialize_modules()                                     │
 │  + analyze() → dict                                        │
 │  + generate_report() → Path                                │
@@ -83,7 +83,7 @@ Utility Classes (Used by all modules):
 │ CatPhanGeometry    │    │ ImageProcessor     │
 │                    │    │                    │
 │+ find_center()     │    │+ create_circular_  │
-│+ find_rotation()   │    │  mask()            │
+│+ rotation detection │    │  mask()            │
 │+ find_slice_       │    │+ extract_profile() │
 │  ctp528()          │    │+ average_slices()  │
 └────────────────────┘    └────────────────────┘
@@ -144,7 +144,7 @@ find_module_centers() → dict
     # Find center of each module
     # Returns: {'ctp528': (x,y), 'ctp404': (x,y), 'ctp486': (x,y)}
 
-find_rotation() → float
+# rotation detection: handled by `CTP404Analyzer.detect_rotation()` (use `CatPhanAnalyzer.run_ctp404()`)
     # Determine phantom rotation angle
     # Returns: Rotation in degrees
 
@@ -411,11 +411,15 @@ SliceLocator.locate_all_modules()
       ▼
 CatPhanGeometry.find_center() × 3
       │
-      ▼
-CatPhanGeometry.find_rotation()
-      │
-      ▼
-CatPhanAnalyzer.initialize_modules()
+    ▼
+Rotation detection is handled by the `CTP404Analyzer.detect_rotation()` implementation
+or the centralized `alexandria.utils.find_rotation()` utility. Use `CatPhanAnalyzer.run_ctp404()`
+to run analyzer-based detection as part of the executive workflow.
+    │
+    ▼
+CatPhanAnalyzer.initialize_modules()  
+    (note: `CatPhanAnalyzer` now runs `CTP404Analyzer.detect_rotation()` as part of
+     its `run_ctp404()` flow and prefers the analyzer's auto-detection when available)
       │
       ├──▶ CTP404Module.analyze()
       │         ├─ prepare_image()

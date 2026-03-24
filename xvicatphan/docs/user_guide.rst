@@ -34,29 +34,21 @@ Initialization
 Step-by-Step Analysis
 ~~~~~~~~~~~~~~~~~~~~~
 
-For more control, you can run each step individually:
+The simplest, recommended approach is to call `analyzer.analyze()` which
+performs loading, module location, center finding, rotation detection (via
+`CTP404Analyzer.detect_rotation()`), and module initialization as required.
 
 .. code-block:: python
 
-   # Load DICOM files
-   num_files = analyzer.load_dicom_files()
-   print(f"Loaded {num_files} files")
+    # Run complete analysis (recommended)
+    analyzer.open_log()
+    results = analyzer.analyze()
+    analyzer.generate_report()
+    analyzer.close_log()
 
-   # Locate modules
-   indices = analyzer.locate_modules()
-   print(f"CTP528 at slice {indices['ctp528']}")
-
-   # Find centers and rotation
-   analyzer.find_module_centers()
-   analyzer.find_rotation()
-
-   # Initialize module instances
-   analyzer.initialize_modules()
-
-   # Access individual modules
-   ctp404_results = analyzer.ctp404.analyze()
-   ctp486_results = analyzer.ctp486.analyze()
-   ctp528_results = analyzer.ctp528.analyze()
+If you need to perform custom preprocessing between loading and analysis, do
+that after `load_dicom_files()` and then call `analyzer.analyze()` to complete
+the workflow (it will detect and initialize modules as needed).
 
 Using Individual Modules
 -------------------------

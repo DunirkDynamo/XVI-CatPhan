@@ -37,45 +37,15 @@ For more control over the process:
 
    # Create analyzer
    analyzer = CatPhanAnalyzer(dicom_path='C:/Data/CatPhan')
-   
-   # Load DICOM files
-   num_files = analyzer.load_dicom_files()
-   print(f"Loaded {num_files} DICOM files")
-   
-   # Locate modules
-   indices = analyzer.locate_modules()
-   print(f"Module locations:")
-   for module, idx in indices.items():
-       print(f"  {module}: slice {idx}")
-   
-   # Find centers
-   centers = analyzer.find_module_centers()
-   print(f"Module centers:")
-   for module, center in centers.items():
-       print(f"  {module}: ({center[0]:.1f}, {center[1]:.1f})")
-   
-   # Find rotation
-   rotation = analyzer.find_rotation()
-   print(f"Rotation: {rotation:.2f} degrees")
-   
-   # Initialize and analyze modules
-   analyzer.initialize_modules()
-   
-   # Analyze each module separately
-   print("--- CTP404 Analysis ---")
-   results_404 = analyzer.ctp404.analyze()
-   print(f"Low Contrast Visibility: {results_404['low_contrast_visibility']:.3f}%")
-   
-   print("--- CTP486 Analysis ---")
-   results_486 = analyzer.ctp486.analyze()
-   print(f"Uniformity: {results_486['uniformity_percent']:.2f}%")
-   
-   print("--- CTP528 Analysis ---")
-   results_528 = analyzer.ctp528.analyze()
-   print(f"10% MTF: {results_528['mtf_10']:.3f} lp/mm")
-   
-   # Generate report
+
+   # Recommended: Run complete analysis (auto-locates modules, finds centers
+   # and rotation, and initializes module analyzers)
+   analyzer.open_log()
+   results = analyzer.analyze()
    analyzer.generate_report()
+   analyzer.close_log()
+
+   print("Analysis complete. See report for details.")
 
 Example 3: Using Individual Modules
 ------------------------------------
@@ -87,23 +57,18 @@ Work with specific analysis modules:
    from catphan_analysis import CatPhanAnalyzer
    from catphan_analysis.modules import CTP404Module
 
-   # First, load DICOM data
+   # First, load DICOM data (you can also run analyzer.analyze() which will
+   # perform module location, center finding and rotation detection automatically)
    analyzer = CatPhanAnalyzer(dicom_path='C:/Data/CatPhan')
    analyzer.load_dicom_files()
-   analyzer.locate_modules()
-   analyzer.find_module_centers()
-   analyzer.find_rotation()
+   analyzer.analyze()
+
+   # Use module instance created by analyzer
+   ctp404 = analyzer.ctp404
    
-   # Create individual module
-   ctp404 = CTP404Module(
-       dicom_set=analyzer.dicom_set,
-       slice_index=analyzer.slice_indices['ctp404'],
-       center=analyzer.module_centers['ctp404'],
-       rotation_offset=analyzer.rotation_offset
-   )
-   
-   # Prepare image
-   ctp404.prepare_image()
+    # Prepare image (already prepared by analyzer.analyze(); you can still
+    # call prepare_image() if working with the module standalone)
+    ctp404.prepare_image()
    
    # Run specific analyses
    contrast_results = ctp404.analyze_contrast()
@@ -151,10 +116,11 @@ Create a custom workflow with preprocessing:
    print(f"Mean HU of first slice: {mean_hu:.1f}")
    
    # Continue with analysis
-   analyzer.locate_modules()
-   analyzer.find_module_centers()
-   analyzer.find_rotation()
-   analyzer.initialize_modules()
+    analyzer.locate_modules()
+    analyzer.find_module_centers()
+    # Rotation detection is performed by the CTP404 analyzer; run it with:
+    analyzer.run_ctp404()
+    analyzer.initialize_modules()
    
    # Run analysis on specific modules
    results_404 = analyzer.ctp404.analyze()
@@ -350,7 +316,8 @@ Access raw analysis data for custom processing:
    analyzer.load_dicom_files()
    analyzer.locate_modules()
    analyzer.find_module_centers()
-   analyzer.find_rotation()
+    # Rotation detection is performed by the CTP404 analyzer; run it with:
+    analyzer.run_ctp404()
    analyzer.initialize_modules()
 
    # Access CTP528 module

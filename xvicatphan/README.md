@@ -42,11 +42,6 @@ catphan_analysis/
 ├── __init__.py              # Package initialization
 ├── analyzer.py              # Executive CatPhanAnalyzer class
 ├── dicom_listener.py        # DICOM file monitoring and processing
-├── modules/
-│   ├── __init__.py
-│   ├── ctp404.py           # CTP404 contrast module
-│   ├── ctp486.py           # CTP486 uniformity module
-│   └── ctp528.py           # CTP528 resolution module
 └── utils/
     ├── __init__.py
     ├── geometry.py         # Geometric calculations
@@ -62,11 +57,22 @@ No Python installation required. Download `CatPhanAnalyzer.exe` and run it.
 ### Option 2: Python Package Installation
 
 ```bash
-# Install dependencies
-pip install numpy scipy matplotlib pydicom
-
 # Install the package
 cd /path/to/xvicatphan
+pip install -e .
+```
+
+### Alexandria Development Setup (Local)
+
+Alexandria is a local library in this repo and is not yet published to PyPI. For
+development, install it in editable mode before running this project:
+
+```bash
+cd /path/to/xvicatphan
+python -m venv .venv
+./.venv/bin/activate  # On Windows: .\.venv\Scripts\Activate.ps1
+python -m pip install -U pip
+pip install -e ../../alexandria
 pip install -e .
 ```
 
@@ -98,13 +104,16 @@ analyzer.close_log()
 
 ```bash
 # Basic usage
-python main.py /path/to/dicom/files
+# Basic usage
+catphan-analyze /path/to/dicom/files
 
 # With output directory
-python main.py /path/to/dicom/files --output /path/to/output
+# With output directory
+catphan-analyze /path/to/dicom/files --output /path/to/output
 
 # Specify CatPhan model
-python main.py /path/to/dicom/files --model 504
+# Specify CatPhan model
+catphan-analyze /path/to/dicom/files --model 504
 ```
 
 ### GUI Folder Selection
@@ -112,7 +121,7 @@ python main.py /path/to/dicom/files --model 504
 Use the graphical folder browser to select data for analysis:
 
 ```bash
-python select_and_analyze.py
+python -m catphan_analysis.select_and_analyze
 ```
 
 This opens a folder selection dialog. Navigate to a folder containing DICOM files, and the analysis will run automatically with results saved to that same folder.
@@ -122,16 +131,16 @@ This opens a folder selection dialog. Navigate to a folder containing DICOM file
 Run a service that monitors for incoming DICOM files:
 
 ```bash
-python listen_and_analyze.py /path/to/dicom/receiver
+python -m catphan_analysis.listen_and_analyze /path/to/dicom/receiver
 ```
 
 ### Using Individual Modules
 
 ```python
-from catphan_analysis.modules import CTP404Module, CTP486Module, CTP528Module
+from alexandria import CTP404Analyzer, UniformityAnalyzer, HighContrastAnalyzer
 
 # Initialize a module
-ctp404 = CTP404Module(
+ctp404 = CTP404Analyzer(
     dicom_set=dicom_datasets,
     slice_index=50,
     center=(256, 256),
@@ -140,7 +149,6 @@ ctp404 = CTP404Module(
 
 # Run analysis
 results = ctp404.analyze()
-summary = ctp404.get_results_summary()
 ```
 
 ## Class Architecture
@@ -155,7 +163,7 @@ class CatPhanAnalyzer:
     def load_dicom_files()
     def locate_modules()
     def find_module_centers()
-    def find_rotation()
+    # rotation detection is handled by the CTP404 analyzer (see `run_ctp404()`)
     def initialize_modules()
     def analyze()
     def generate_report()
@@ -163,26 +171,29 @@ class CatPhanAnalyzer:
 
 ### Analysis Module Classes
 
-Each phantom module is implemented as a class:
+The analysis modules are provided by the Alexandria library:
 
-#### CTP404Module - Contrast and Spatial Linearity
+#### CTP404Analyzer - Contrast and Spatial Linearity
 - Measures HU values for different materials
 - Calculates low contrast visibility
 - Verifies spatial scaling
 - Measures slice thickness
 
-#### CTP486Module - Uniformity
+#### UniformityAnalyzer - Uniformity
 - Measures uniformity across 5 regions
 - Calculates uniformity percentage
 
-#### CTP528Module - Spatial Resolution
+#### HighContrastAnalyzer - Spatial Resolution
 - Analyzes line pair patterns
 - Calculates Modulation Transfer Function (MTF)
 - Reports MTF at 10%, 30%, 50%, 80%
 
 ### Utility Classes
 
-- **CatPhanGeometry**: Geometric calculations (center finding, rotation detection)
+- **CatPhanGeometry**: Geometric calculations (center finding). Rotation detection now delegates
+    to the centralized Alexandria utility (`alexandria.utils.find_rotation`) to avoid duplicated
+    implementations across projects. Use `CatPhanAnalyzer` (see below) which will prefer
+    the `CTP404Analyzer.detect_rotation()` implementation when running full analysis.
 - **SliceLocator**: Locates phantom modules in DICOM series
 - **ImageProcessor**: Image processing operations
 
@@ -212,13 +223,17 @@ analyzer = CatPhanAnalyzer(
 )
 
 # Load and prepare data
-analyzer.load_dicom_files()
-analyzer.locate_modules()
-analyzer.find_module_centers()
-analyzer.find_rotation()
+    analyzer.load_dicom_files()
+    analyzer.locate_modules()
+    analyzer.find_module_centers()
 
-# Initialize specific modules
-analyzer.initialize_modules()
+    # Detect rotation and run the CTP404 module (this will set rotation and
+    # refine the CTP404 center). You can run the full analysis with
+    # `analyzer.analyze()` instead.
+    analyzer.run_ctp404()
+
+    # Initialize specific modules (if you prefer manual control)
+    analyzer.initialize_modules()
 
 # Access individual modules
 ctp404 = analyzer.ctp404

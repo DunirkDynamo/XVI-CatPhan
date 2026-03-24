@@ -45,7 +45,7 @@ pyinstaller CatPhanAnalyzer.spec
 ### Option 3: Quick Build (No Spec File)
 
 ```bash
-pyinstaller --onefile --windowed --name=CatPhanAnalyzer select_and_analyze.py
+pyinstaller --onefile --windowed --name=CatPhanAnalyzer catphan_analysis/select_and_analyze.py
 ```
 
 ## The Executable

@@ -1,5 +1,9 @@
 # Quick Reference Guide
 
+This is a compact lookup for commands, options, and APIs once you are already
+familiar with the basics. If you are installing or running the tool for the
+first time, start with [QUICKSTART.md](QUICKSTART.md).
+
 **Version 1.0 - Working Release**
 
 This package reproduces the analysis from processDICOMcat2.py in an object-oriented architecture.
@@ -16,7 +20,7 @@ pip install -r requirements.txt
 
 ```bash
 catphan-select
-# Or: python select_and_analyze.py
+# Or: python -m catphan_analysis.select_and_analyze
 ```
 
 ### 2. Analyze CatPhan Images (Simple)
@@ -35,14 +39,14 @@ analyzer.close_log()
 
 ```bash
 catphan-analyze /path/to/dicom/files
-# Or: python main.py /path/to/dicom/files
+# Or: catphan-analyze /path/to/dicom/files
 ```
 
 ### 4. Automated DICOM Monitoring
 
 ```bash
 catphan-listen /path/to/receiver
-# Or: python listen_and_analyze.py /path/to/receiver
+# Or: python -m catphan_analysis.listen_and_analyze /path/to/receiver
 ```
 
 ## Class Quick Reference
@@ -57,14 +61,13 @@ analyzer = CatPhanAnalyzer(
     catphan_model='500'              # or '504'
 )
 
-# Main workflow methods
-analyzer.load_dicom_files()       # Load DICOM files
-analyzer.locate_modules()         # Find module locations
-analyzer.find_module_centers()    # Find phantom centers
-analyzer.find_rotation()          # Find rotation
-analyzer.initialize_modules()     # Create module instances
-analyzer.analyze()                # Run complete analysis
-analyzer.generate_report()        # Generate output files
+# Recommended usage: `analyzer.analyze()` performs loading, module location,
+# center finding, rotation detection (via CTP404Analyzer), and module
+# initialization as needed.
+analyzer.open_log()
+results = analyzer.analyze()
+analyzer.generate_report()
+analyzer.close_log()
 ```
 
 ### CTP404Module (Contrast)
@@ -130,8 +133,11 @@ from catphan_analysis.utils.geometry import CatPhanGeometry
 # Find phantom center
 center, boundary = CatPhanGeometry.find_center(image)
 
-# Find rotation
-rotation, top, bottom = CatPhanGeometry.find_rotation(image, center)
+# Rotation detection is provided by the Alexandria utility or the CTP404 analyzer.
+# Use one of the following:
+# - `analyzer.run_ctp404()` or `analyzer.analyze()` (recommended)
+# - `CTP404Analyzer.detect_rotation()` (module-level)
+# - `from alexandria.utils import find_rotation` and call `find_rotation(image, center, pixel_spacing, ...)`
 
 # Find CTP528 slice
 slice_idx = CatPhanGeometry.find_slice_ctp528(dicom_set)
@@ -197,13 +203,14 @@ analyzer.close_log()
 ### Workflow 2: Custom Processing
 ```python
 analyzer = CatPhanAnalyzer('/path/to/dicom')
+# If you need to perform custom preprocessing, call `load_dicom_files()` first,
+# then run your preprocessing and finally call `analyzer.analyze()` which will
+# complete module location, center/rotation detection, and initialization.
 analyzer.load_dicom_files()
-analyzer.locate_modules()
-analyzer.find_module_centers()
-analyzer.find_rotation()
-analyzer.initialize_modules()
+# ... custom preprocessing here ...
+results = analyzer.analyze()
 
-# Access and use individual modules
+# Access and use individual modules (created by the analyzer)
 contrast = analyzer.ctp404.analyze_contrast()
 uniformity = analyzer.ctp486.analyze_uniformity()
 mtf = analyzer.ctp528.analyze()
@@ -247,7 +254,7 @@ for path in datasets:
 
 ### main.py
 ```bash
-python main.py <dicom_path> [OPTIONS]
+catphan-analyze <dicom_path> [OPTIONS]
 
 Options:
   --output, -o PATH     Output directory
@@ -255,9 +262,9 @@ Options:
   --no-plots           Skip plot generation
 ```
 
-### listen_and_analyze.py
+### catphan_analysis.listen_and_analyze
 ```bash
-python listen_and_analyze.py <base_path> [OPTIONS]
+python -m catphan_analysis.listen_and_analyze <base_path> [OPTIONS]
 
 Options:
   --interval, -i SECONDS    Check interval (default: 5)

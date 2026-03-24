@@ -1,5 +1,9 @@
 # Quick Start Guide - CatPhan Analysis
 
+This guide gets you running quickly with minimal setup and context. If you
+already know the basics and just need a compact lookup of commands, flags, and
+APIs, see [QUICK_REFERENCE.md](QUICK_REFERENCE.md).
+
 ## Three Ways to Use the Package
 
 ### 1. GUI Folder Selection (Recommended for Manual Analysis)
@@ -7,7 +11,7 @@
 The easiest way to analyze existing DICOM data:
 
 ```bash
-python select_and_analyze.py
+python -m catphan_analysis.select_and_analyze
 ```
 
 **What happens:**
@@ -30,13 +34,13 @@ For scripting or when you know the path:
 
 ```bash
 # Basic usage
-python main.py /path/to/dicom/files
+catphan-analyze /path/to/dicom/files
 
 # Custom output location
-python main.py /path/to/dicom/files --output /path/to/results
+catphan-analyze /path/to/dicom/files --output /path/to/results
 
 # Specify CatPhan model (default is 500)
-python main.py /path/to/dicom/files --model 504
+catphan-analyze /path/to/dicom/files --model 504
 ```
 
 ---
@@ -46,7 +50,7 @@ python main.py /path/to/dicom/files --model 504
 For automated analysis when files arrive:
 
 ```bash
-python listen_and_analyze.py /path/to/dicom/receiver
+python -m catphan_analysis.listen_and_analyze /path/to/dicom/receiver
 ```
 
 **What it does:**
@@ -58,10 +62,10 @@ python listen_and_analyze.py /path/to/dicom/receiver
 **Options:**
 ```bash
 # Check every 10 seconds (default: 5)
-python listen_and_analyze.py /path/to/receiver --interval 10
+python -m catphan_analysis.listen_and_analyze /path/to/receiver --interval 10
 
 # Wait 5 cycles before processing (default: 8)
-python listen_and_analyze.py /path/to/receiver --wait-cycles 5
+python -m catphan_analysis.listen_and_analyze /path/to/receiver --wait-cycles 5
 ```
 
 ---
@@ -72,7 +76,7 @@ python listen_and_analyze.py /path/to/receiver --wait-cycles 5
 
 1. Run the GUI selector:
    ```bash
-   python select_and_analyze.py
+   python -m catphan_analysis.select_and_analyze
    ```
 
 2. Browse to your DICOM folder, e.g.:

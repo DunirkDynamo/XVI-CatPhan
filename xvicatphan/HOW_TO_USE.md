@@ -34,7 +34,7 @@ pip install -r requirements.txt
 **Without installation**, you must run scripts directly from the package directory:
 ```bash
 cd /path/to/xvicatphan
-python select_and_analyze.py
+python -m catphan_analysis.select_and_analyze
 ```
 
 ---
@@ -87,7 +87,7 @@ catphan-select
 **If running without installation:**
 ```bash
 cd /path/to/xvicatphan
-python select_and_analyze.py
+python -m catphan_analysis.select_and_analyze
 ```
 
 1. A folder browser window will appear
@@ -120,7 +120,7 @@ catphan-analyze /path/to/dicom/folder
 **If running without installation:**
 ```bash
 cd /path/to/xvicatphan
-python main.py /path/to/dicom/folder
+python -m catphan_analysis.main /path/to/dicom/folder
 ```
 
 **Options:**
@@ -153,7 +153,7 @@ catphan-listen /path/to/dicom/receiver
 **If running without installation:**
 ```bash
 cd /path/to/xvicatphan
-python listen_and_analyze.py /path/to/dicom/receiver
+python -m catphan_analysis.listen_and_analyze /path/to/dicom/receiver
 ```
 
 The program monitors the specified folder continuously:
@@ -267,7 +267,7 @@ All methods produce the same output files:
 2. **Center the phantom:** Improves automatic detection
 3. **Include all modules:** Scan should cover ~120mm along the phantom axis
 4. **Check the log file:** If results look wrong, review `ScriptLog.txt` for clues
-5. **Use the GUI first:** Try `select_and_analyze.py` on a known-good dataset before setting up automation
+5. **Use the GUI first:** Try `python -m catphan_analysis.select_and_analyze` on a known-good dataset before setting up automation
 
 ---
 
