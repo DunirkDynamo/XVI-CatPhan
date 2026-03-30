@@ -1,0 +1,55 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# PyInstaller
+*.manifest
+*.spec~
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+*_env/
+*_venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+ScriptLog.txt
+.coverage
+htmlcov/
+
+# Python tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Sphinx documentation
+docs/_build/
+docs/_static/
+docs/_templates/
+docs/.buildinfo
+
+# Distribution / packaging
+*.whl
+*.tar.gz
+*.zip
