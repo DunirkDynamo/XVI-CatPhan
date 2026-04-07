@@ -43,6 +43,9 @@ htmlcov/
 .mypy_cache/
 .ruff_cache/
 
+# setuptools-scm generated version file
+src/catphan_analysis/_version.py
+
 # Sphinx documentation
 docs/_build/
 docs/_static/
