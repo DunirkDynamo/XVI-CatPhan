@@ -59,7 +59,7 @@ jobs:
         run: |
           git rev-parse HEAD
           git tag --points-at HEAD
-          python -m setuptools_scm
+          python -c "from importlib.metadata import version; print(version('catphan-analysis'))"
 
       - name: Verify package version matches tag
         env:
