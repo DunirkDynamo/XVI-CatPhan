@@ -34,8 +34,9 @@ jobs:
       - name: Install documentation dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -e .[docs]
-          pip install setuptools-scm
+          pip install numpy scipy matplotlib pydicom
+          pip install sphinx sphinx-rtd-theme myst-parser setuptools-scm
+          pip install -e . --no-deps
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
@@ -43,8 +44,8 @@ jobs:
       - name: Build Sphinx documentation
         working-directory: docs
         run: |
-          sphinx-build -b html . _build/html
-          touch _build/html/.nojekyll
+          python -m sphinx -b html . _build/html
+          python -c "from pathlib import Path; Path('_build/html/.nojekyll').touch()"
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
