@@ -16,8 +16,12 @@ import os
 import sys
 from PyInstaller.utils.hooks import collect_submodules
 
-SPEC_DIR = os.path.dirname(os.path.abspath(__file__))
-ROOT_DIR = os.path.abspath(os.path.join(SPEC_DIR, '..', '..'))
+# PyInstaller does not always define `__file__` when executing a spec file,
+# especially in CI. Fall back to the current working directory, which is the
+# repository root in the supported build workflows.
+SPEC_FILE = globals().get('__file__')
+SPEC_DIR = os.path.dirname(os.path.abspath(SPEC_FILE)) if SPEC_FILE else os.path.abspath(os.getcwd())
+ROOT_DIR = os.path.abspath(os.path.join(SPEC_DIR, '..', '..')) if SPEC_FILE else SPEC_DIR
 SRC_DIR = os.path.join(ROOT_DIR, 'src')
 ENTRYPOINT = os.path.join(SRC_DIR, 'catphan_analysis', 'select_and_analyze.py')
 
