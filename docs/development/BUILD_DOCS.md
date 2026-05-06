@@ -11,7 +11,7 @@ pip install sphinx sphinx-rtd-theme
 Or install all dependencies:
 
 ```bash
-pip install -r requirements.txt
+pip install .[docs]
 ```
 
 ## Build Documentation (3 Steps)

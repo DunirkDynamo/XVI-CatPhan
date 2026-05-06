@@ -55,15 +55,11 @@ Work with specific analysis modules:
 .. code-block:: python
 
    from catphan_analysis import CatPhanAnalyzer
-   from catphan_analysis.modules import CTP404Module
 
-   # First, load DICOM data (you can also run analyzer.analyze() which will
-   # perform module location, center finding and rotation detection automatically)
    analyzer = CatPhanAnalyzer(dicom_path='C:/Data/CatPhan')
-   analyzer.load_dicom_files()
    analyzer.analyze()
 
-   # Use module instance created by analyzer
+   # Access the module analyzer instance created during analysis
    ctp404 = analyzer.ctp404
    
     # Prepare image (already prepared by analyzer.analyze(); you can still

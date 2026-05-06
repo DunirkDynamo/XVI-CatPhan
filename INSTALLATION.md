@@ -80,11 +80,6 @@ python --version
 pip install numpy scipy matplotlib pydicom
 ```
 
-Or from requirements file:
-```bash
-pip install -r requirements.txt
-```
-
 #### Step 2: Install the Package
 
 **Option A: User Installation (Recommended)**

@@ -21,8 +21,6 @@ See [INSTALLATION.md](../../INSTALLATION.md) for installation details.
 cd /path/to/XVI-CatPhan
 pip install -e .
 
-# Option 2: Install from requirements only (manual script execution)
-pip install -r requirements.txt
 ```
 
 **Why install the package?**

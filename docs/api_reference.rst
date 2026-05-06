@@ -19,33 +19,6 @@ Executive Class
    :undoc-members:
    :show-inheritance:
 
-Analysis Modules
-----------------
-
-CTP404 Module
-~~~~~~~~~~~~~
-
-.. autoclass:: catphan_analysis.modules.ctp404.CTP404Module
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-CTP486 Module
-~~~~~~~~~~~~~
-
-.. autoclass:: catphan_analysis.modules.ctp486.CTP486Module
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-CTP528 Module
-~~~~~~~~~~~~~
-
-.. autoclass:: catphan_analysis.modules.ctp528.CTP528Module
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 Utility Classes
 ---------------
 

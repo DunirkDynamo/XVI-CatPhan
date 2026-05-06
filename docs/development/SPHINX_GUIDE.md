@@ -13,7 +13,7 @@ pip install sphinx sphinx-rtd-theme
 Or install all dependencies including documentation tools:
 
 ```bash
-pip install -r requirements.txt
+pip install .[docs]
 ```
 
 ## Documentation Structure
@@ -310,7 +310,7 @@ jobs:
           python-version: '3.9'
       - name: Install dependencies
         run: |
-          pip install -r requirements.txt
+          pip install .[docs]
       - name: Build documentation
         run: |
           cd docs

@@ -18,7 +18,7 @@ Using pip
 
 .. code-block:: bash
 
-   pip install -r requirements.txt
+   pip install .
 
 For development installation:
 
@@ -36,13 +36,7 @@ From Source
       git clone https://github.com/yourusername/catphan-analysis.git
       cd catphan-analysis
 
-2. Install dependencies:
-
-   .. code-block:: bash
-
-      pip install -r requirements.txt
-
-3. (Optional) Install the package:
+2. Install the package:
 
    .. code-block:: bash
 

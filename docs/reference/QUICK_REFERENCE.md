@@ -11,7 +11,7 @@ This package reproduces the analysis from processDICOMcat2.py in an object-orien
 ## Installation
 
 ```bash
-pip install -r requirements.txt
+pip install .
 ```
 
 ## Quick Start
@@ -68,60 +68,6 @@ analyzer.open_log()
 results = analyzer.analyze()
 analyzer.generate_report()
 analyzer.close_log()
-```
-
-### CTP404Module (Contrast)
-```python
-from catphan_analysis.modules import CTP404Module
-
-ctp404 = CTP404Module(
-    dicom_set=dicom_datasets,
-    slice_index=50,
-    center=(256, 256),
-    rotation_offset=0.0
-)
-
-ctp404.prepare_image()                      # 3-slice average
-ctp404.analyze_contrast()                   # HU measurements
-ctp404.calculate_low_contrast_visibility()  # LCV metric
-ctp404.calculate_spatial_scaling()          # X/Y scaling
-ctp404.measure_slice_thickness()            # Slice thickness
-ctp404.analyze()                            # Complete analysis
-ctp404.get_results_summary()                # Formatted results
-```
-
-### CTP486Module (Uniformity)
-```python
-from catphan_analysis.modules import CTP486Module
-
-ctp486 = CTP486Module(
-    dicom_set=dicom_datasets,
-    slice_index=30,
-    center=(256, 256),
-    roi_box_size=15,    # mm
-    roi_offset=50       # mm
-)
-
-ctp486.prepare_image()          # 3-slice average
-ctp486.analyze_uniformity()     # 5-region analysis
-ctp486.analyze()                # Complete analysis
-ctp486.get_results_summary()    # Formatted results
-```
-
-### CTP528Module (Resolution)
-```python
-from catphan_analysis.modules import CTP528Module
-
-ctp528 = CTP528Module(
-    dicom_set=dicom_datasets,
-    slice_index=86,
-    center=(256, 256),
-    rotation_offset=0.0
-)
-
-ctp528.select_optimal_slices()  # Choose best slices
-ctp528.analyze()                # MTF calculation
-ctp528.get_results_summary()    # MTF at 10%, 30%, 50%, 80%
 ```
 
 ### Utility Classes
@@ -221,23 +167,12 @@ analyzer.generate_report()
 
 ### Workflow 3: Individual Module
 ```python
-# Load data first
+# Run full analysis, then access individual module analyzers
 analyzer = CatPhanAnalyzer('/path/to/dicom')
-analyzer.load_dicom_files()
-analyzer.locate_modules()
-analyzer.find_module_centers()
+analyzer.analyze()
 
-# Use just one module
-from catphan_analysis.modules import CTP404Module
-
-ctp404 = CTP404Module(
-    dicom_set=analyzer.dicom_set,
-    slice_index=analyzer.slice_indices['ctp404'],
-    center=analyzer.module_centers['ctp404'],
-    rotation_offset=0.0
-)
-
-results = ctp404.analyze()
+# Module analyzers are Alexandria classes accessible via the executive class
+results = analyzer.ctp404.analyze()
 ```
 
 ### Workflow 4: Batch Processing

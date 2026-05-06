@@ -111,8 +111,6 @@ If you haven't installed yet:
 # Install the package
 pip install -e .
 
-# Or just install dependencies
-pip install -r requirements.txt
 ```
 
 After installation, you can use console commands:

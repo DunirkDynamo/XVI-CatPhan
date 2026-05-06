@@ -9,7 +9,7 @@ Architecture Overview
 The package is organized around a modular, object-oriented architecture:
 
 * **Executive Class**: :class:`~catphan_analysis.analyzer.CatPhanAnalyzer` coordinates the workflow
-* **Analysis Modules**: :class:`~catphan_analysis.modules.CTP404Module`, :class:`~catphan_analysis.modules.CTP486Module`, :class:`~catphan_analysis.modules.CTP528Module`
+* **Analysis Modules**: ``CTP404Analyzer``, ``UniformityAnalyzer``, ``HighContrastAnalyzer`` (provided by the ``alexandria`` library)
 * **Utilities**: Geometric calculations and image processing helpers
 * **DICOM Listener**: Automated file monitoring and processing
 
@@ -49,72 +49,6 @@ performs loading, module location, center finding, rotation detection (via
 If you need to perform custom preprocessing between loading and analysis, do
 that after `load_dicom_files()` and then call `analyzer.analyze()` to complete
 the workflow (it will detect and initialize modules as needed).
-
-Using Individual Modules
--------------------------
-
-Each analysis module can be used independently.
-
-CTP404 Module (Contrast)
-~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. code-block:: python
-
-   from catphan_analysis.modules import CTP404Module
-
-   ctp404 = CTP404Module(
-       dicom_set=dicom_datasets,
-       slice_index=50,
-       center=(256, 256),
-       rotation_offset=0.0
-   )
-
-   # Prepare image
-   ctp404.prepare_image()
-
-   # Run specific analyses
-   contrast_results = ctp404.analyze_contrast()
-   lcv = ctp404.calculate_low_contrast_visibility()
-   x_scale, y_scale, _ = ctp404.calculate_spatial_scaling()
-   thickness = ctp404.measure_slice_thickness()
-
-   # Or run complete analysis
-   all_results = ctp404.analyze()
-
-CTP486 Module (Uniformity)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. code-block:: python
-
-   from catphan_analysis.modules import CTP486Module
-
-   ctp486 = CTP486Module(
-       dicom_set=dicom_datasets,
-       slice_index=30,
-       center=(256, 256),
-       roi_box_size=15,  # mm
-       roi_offset=50     # mm
-   )
-
-   results = ctp486.analyze()
-   uniformity = results['uniformity_percent']
-
-CTP528 Module (Resolution)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. code-block:: python
-
-   from catphan_analysis.modules import CTP528Module
-
-   ctp528 = CTP528Module(
-       dicom_set=dicom_datasets,
-       slice_index=86,
-       center=(256, 256),
-       rotation_offset=0.0
-   )
-
-   results = ctp528.analyze()
-   mtf_10 = results['mtf_10']  # 10% MTF in lp/mm
 
 Automated Processing
 --------------------

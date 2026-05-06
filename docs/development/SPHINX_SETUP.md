@@ -42,7 +42,7 @@ docs/
 
 ### 3. Updated Dependencies
 
-Added to `requirements.txt`:
+Added to `pyproject.toml` optional dependencies (`[docs]`):
 ```
 sphinx>=4.0.0
 sphinx-rtd-theme>=1.0.0
@@ -225,7 +225,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
-      - run: pip install -r requirements.txt
+      - run: pip install .[docs]
       - run: cd docs && make html
 ```
 
