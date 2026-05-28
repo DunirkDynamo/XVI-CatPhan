@@ -15,6 +15,8 @@ import warnings
 
 # Import Alexandria analyzers
 from alexandria import CTP404Analyzer, UniformityAnalyzer, HighContrastAnalyzer, DetailedUniformityAnalyzer
+from alexandria.utils import CatPhanGeometry as AlexandriaGeometry
+from alexandria.utils import find_center_mirror_correlation, find_rotation
 from alexandria.plotters import CTP404Plotter, HighContrastPlotter, UniformityPlotter, DetailedUniformityPlotter
 from .utils.geometry import CatPhanGeometry, SliceLocator
 from .utils.image_processing import ImageProcessor
@@ -88,8 +90,8 @@ class CatPhanAnalyzer:
         # Walk the full input tree so nested study directories are supported.
         for root, _, filenames in os.walk(self.dicom_path):
             for filename in filenames:
-                # Skip obvious sidecar files that are not image payloads.
-                if 'dir' in filename or 'txt' in filename:
+                # Only process DICOM files.
+                if not filename.lower().endswith('.dcm'):
                     continue
                 
                 # `dcm_path` is the full filesystem path to the candidate DICOM file.
@@ -132,7 +134,7 @@ class CatPhanAnalyzer:
         
         # Log the treatment unit name when at least one image was loaded successfully.
         if len(self.dicom_set) > 0:
-            self._log(f"Unit: {self.dicom_set[0].StationName}")
+            self._log(f"Unit: {getattr(self.dicom_set[0], 'StationName', 'Unknown')}")
         
         return len(self.dicom_set)
     
@@ -178,9 +180,10 @@ class CatPhanAnalyzer:
         im_486 = ImageProcessor.average_slices(self.dicom_set, [idx_486-1, idx_486, idx_486+1])
         
         # Find centers
-        c_528, _ = geometry.find_center(im_528)
-        c_404, _ = geometry.find_center(im_404)
-        c_486, _ = geometry.find_center(im_486)
+        c_528, _ = AlexandriaGeometry.find_center(im_528)
+        c_404, _ = AlexandriaGeometry.find_center(im_404)
+        c_486_row, c_486_col, _, _ = find_center_mirror_correlation(im_486)
+        c_486 = [c_486_col, c_486_row]
         
         self.module_centers = {
             'ctp528': c_528,
@@ -272,13 +275,19 @@ class CatPhanAnalyzer:
 
         # Let analyzer find rotation (overrides external geometry finder)
         try:
-            rot_res = self.ctp404.detect_rotation()
-            if isinstance(rot_res, tuple) and len(rot_res) == 3:
-                rotation_angle, top_pt, bottom_pt = rot_res
-            else:
-                rotation_angle = float(rot_res)
-                top_pt = getattr(self.ctp404, 'rotation_top_point', None)
-                bottom_pt = getattr(self.ctp404, 'rotation_bottom_point', None)
+            rotation_angle, top_pt, bottom_pt = find_rotation(
+                self.ctp404.image,
+                self.ctp404.center,
+                self.ctp404.pixel_spacing,
+                insert_radius_mm=self.ctp404.material_distance,
+                edge_threshold=100.0,
+                center_threshold=30,
+                iterations=5,
+                profile_length=25,
+                granularity=3,
+                interp_kwargs={'bounds_error': False, 'fill_value': 0},
+                initial_angle_deg=0.0,
+            )
         except Exception:
             # Fallback: retain any existing rotation_offset
             rotation_angle = self.rotation_offset
@@ -411,9 +420,9 @@ class CatPhanAnalyzer:
             'ctp486_detailed': results_486_detailed,
             'ctp528': results_528,
             'metadata': {
-                'unit': self.dicom_set[0].StationName,
-                'study_date': self.dicom_set[0].StudyDate,
-                'study_time': self.dicom_set[0].StudyTime
+                'unit': getattr(self.dicom_set[0], 'StationName', 'Unknown'),
+                'study_date': getattr(self.dicom_set[0], 'StudyDate', 'Unknown'),
+                'study_time': getattr(self.dicom_set[0], 'StudyTime', 'Unknown')
             }
         }
 
@@ -446,13 +455,15 @@ class CatPhanAnalyzer:
         ds = self.dicom_set[0]
 
         # `date_str` is the human-readable acquisition date written into the report.
-        date_str = f"{ds.StudyDate[0:4]}-{ds.StudyDate[4:6]}-{ds.StudyDate[6:8]}"
+        _study_date = getattr(ds, 'StudyDate', 'Unknown')
+        date_str = f"{_study_date[0:4]}-{_study_date[4:6]}-{_study_date[6:8]}" if _study_date != 'Unknown' else 'Unknown'
 
         # `time_str` is the human-readable acquisition time written into the report.
-        time_str = f"{ds.StudyTime[0:2]}:{ds.StudyTime[2:4]}:{ds.StudyTime[4:6]}"
+        _study_time = getattr(ds, 'StudyTime', 'Unknown')
+        time_str = f"{_study_time[0:2]}:{_study_time[2:4]}:{_study_time[4:6]}" if _study_time != 'Unknown' else 'Unknown'
 
         # `unit_name` is the scanner or treatment-unit name embedded in the study metadata.
-        unit_name = ds.StationName
+        unit_name = getattr(ds, 'StationName', 'Unknown')
         
         # Build the report filename and absolute output path.
         report_filename = f"CatPhan_{unit_name}_{date_str}.txt"
@@ -493,7 +504,7 @@ class CatPhanAnalyzer:
             
             # Write summary metadata that does not belong to a single module section.
             f.write("----- Misc -----\n")
-            f.write(f"Catphan rotation (deg): {self.rotation_offset:.1f}\n")
+            f.write(f"Catphan rotation (deg): {self.rotation_offset}\n")
         
         self._log(f"Report saved: {report_path}")
         
@@ -516,8 +527,9 @@ class CatPhanAnalyzer:
             List of plot file paths
         """
         ds = self.dicom_set[0]
-        date_str = f"{ds.StudyDate[0:4]}-{ds.StudyDate[4:6]}-{ds.StudyDate[6:8]}"
-        unit_name = ds.StationName
+        _study_date = getattr(ds, 'StudyDate', 'Unknown')
+        date_str = f"{_study_date[0:4]}-{_study_date[4:6]}-{_study_date[6:8]}" if _study_date != 'Unknown' else 'Unknown'
+        unit_name = getattr(ds, 'StationName', 'Unknown')
         
         base_name = f"CatPhan_{unit_name}_{date_str}"
         plot_paths = []
@@ -868,8 +880,9 @@ class CatPhanAnalyzer:
 
         # Tight layout and save — handle tight_layout incompatibility warnings
         ds0 = self.dicom_set[0] if self.dicom_set else None
-        date_str = f"{ds0.StudyDate[0:4]}-{ds0.StudyDate[4:6]}-{ds0.StudyDate[6:8]}" if ds0 is not None else 'unknown'
-        unit_name = ds0.StationName if ds0 is not None else 'unit'
+        _study_date = getattr(ds0, 'StudyDate', None) if ds0 is not None else None
+        date_str = f"{_study_date[0:4]}-{_study_date[4:6]}-{_study_date[6:8]}" if _study_date else 'unknown'
+        unit_name = getattr(ds0, 'StationName', 'Unknown') if ds0 is not None else 'unit'
         base_name = f"CatPhan_{unit_name}_{date_str}"
         save_path = self.output_path / f"{base_name}_Legacy.png"
 
@@ -994,7 +1007,9 @@ class CatPhanAnalyzer:
         
         # Get coordinates through center of top and bottom ROIs
         r = 70
-        t_offset = self.rotation_offset
+        # `rotation_offset` is stored as CCW-positive; this legacy scaling
+        # geometry uses image-style CW-positive angles.
+        t_offset = -self.rotation_offset
         
         xscale_xcoord = [
             cmid[0] - r / space[0] * np.cos(t_offset * 2 * np.pi / 360),
@@ -1015,7 +1030,7 @@ class CatPhanAnalyzer:
         ftmp = np.zeros(len(xtmp))
         
         for i in range(len(xtmp)):
-            ftmp[i] = interpn((x, y), im, [ytmp[i], xtmp[i]])
+            ftmp[i] = interpn((x, y), im, [[ytmp[i], xtmp[i]]])[0]
         
         f1 = ftmp
         pts = [xtmp, ytmp]
@@ -1036,7 +1051,7 @@ class CatPhanAnalyzer:
         ftmp = np.zeros(len(xtmp))
         
         for i in range(len(xtmp)):
-            ftmp[i] = interpn((x, y), im, [ytmp[i], xtmp[i]])
+            ftmp[i] = interpn((x, y), im, [[ytmp[i], xtmp[i]]])[0]
         
         f2 = ftmp
         pts.extend([xtmp, ytmp])

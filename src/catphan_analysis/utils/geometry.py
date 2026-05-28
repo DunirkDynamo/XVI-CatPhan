@@ -9,6 +9,157 @@ from scipy.interpolate import interpn
 from scipy.signal import find_peaks, peak_widths
 
 
+def find_center_edge_detection(image, threshold=400.0, fallback_threshold=300.0, return_diameters=False):
+    """
+    Detect the phantom center from orthogonal edge profiles through the image midpoint.
+
+    This is a local copy of the Alexandria helper used by rotation detection so
+    XVI-CatPhan can override the interpolation behavior without changing the
+    shared dependency.
+    """
+    sz = np.array(image.shape)
+    matrix_c = (int(np.round(sz[0] / 2)), int(np.round(sz[1] / 2)))
+
+    px = image[matrix_c[0], :]
+    py = image[:, matrix_c[1]]
+
+    offset = 1
+
+    try:
+        x1 = next(x for x, val in enumerate(px) if val > threshold) + offset
+        y1 = next(x for x, val in enumerate(py) if val > threshold) - offset
+        x2 = next(x for x, val in reversed(list(enumerate(px))) if val > threshold) + offset
+        y2 = next(x for x, val in reversed(list(enumerate(py))) if val > threshold) - offset
+    except StopIteration:
+        threshold = fallback_threshold
+        try:
+            x1 = next(x for x, val in enumerate(px) if val > threshold) + offset
+            y1 = next(x for x, val in enumerate(py) if val > threshold) - offset
+            x2 = next(x for x, val in reversed(list(enumerate(px))) if val > threshold) + offset
+            y2 = next(x for x, val in reversed(list(enumerate(py))) if val > threshold) - offset
+        except StopIteration:
+            if return_diameters:
+                return matrix_c[0], matrix_c[1], None, None
+            return matrix_c[0], matrix_c[1]
+
+    center_col = (x1 + x2) / 2.0
+    center_row = (y1 + y2) / 2.0
+
+    if return_diameters:
+        diameter_x = float(x2 - x1)
+        diameter_y = float(y2 - y1)
+        return center_row, center_col, diameter_y, diameter_x
+    return center_row, center_col
+
+
+def find_rotation(image, center, pixel_spacing, insert_radius_mm=58.5, edge_threshold=100.0,
+                  center_threshold=30, iterations=5, profile_length=25, granularity=4,
+                  interp_kwargs=None, initial_angle_deg=0.0):
+    """
+    Detect phantom rotation by locating the top and bottom insert positions.
+
+    This is a local copy of Alexandria's rotation helper with the SciPy interpn
+    query-point fix applied.
+    """
+    if interp_kwargs is None:
+        interp_kwargs = {'bounds_error': False, 'fill_value': 0}
+
+    if isinstance(pixel_spacing, (list, tuple, np.ndarray)):
+        space = float(pixel_spacing[0])
+    else:
+        space = float(pixel_spacing)
+
+    if center is None:
+        r_row, r_col = find_center_edge_detection(
+            image,
+            threshold=400.0,
+            fallback_threshold=300.0,
+        )
+        center = (float(r_col), float(r_row))
+
+    h_img, w_img = image.shape[:2]
+    ring_r = insert_radius_mm / space
+
+    _p90 = (
+        ring_r * np.cos(np.radians(90 + initial_angle_deg)) + center[0],
+        ring_r * np.sin(np.radians(90 + initial_angle_deg)) + center[1],
+    )
+    _p270 = (
+        ring_r * np.cos(np.radians(270 + initial_angle_deg)) + center[0],
+        ring_r * np.sin(np.radians(270 + initial_angle_deg)) + center[1],
+    )
+    ct = _p270
+    cb = _p90
+
+    x = np.linspace(0, h_img - 1, h_img)
+    y = np.linspace(0, w_img - 1, w_img)
+
+    def _find_insert_center(roi_pos):
+        x_horiz = np.linspace(
+            roi_pos[0] - profile_length,
+            roi_pos[0] + profile_length,
+            profile_length * granularity,
+        )
+        x_vert = np.linspace(
+            roi_pos[1] - profile_length,
+            roi_pos[1] + profile_length,
+            profile_length * granularity,
+        )
+
+        prof_h = np.zeros(len(x_horiz))
+        prof_v = np.zeros(len(x_vert))
+        for i in range(len(x_horiz)):
+            prof_h[i] = interpn((x, y), image, [[roi_pos[1], x_horiz[i]]], **interp_kwargs)[0]
+        for i in range(len(x_vert)):
+            prof_v[i] = interpn((x, y), image, [[x_vert[i], roi_pos[0]]], **interp_kwargs)[0]
+
+        dh = np.diff(prof_h)
+        dv = np.diff(prof_v)
+        peaks_h, _ = find_peaks(np.abs(dh), height=edge_threshold)
+        peaks_v, _ = find_peaks(np.abs(dv), height=edge_threshold)
+
+        if len(peaks_h) >= 2 and len(peaks_v) >= 2:
+            step_h = x_horiz[1] - x_horiz[0]
+            step_v = x_vert[1] - x_vert[0]
+            mid_h = np.mean(x_horiz[0] + (peaks_h + 0.5) * step_h) - roi_pos[0]
+            mid_v = np.mean(x_vert[0] + (peaks_v + 0.5) * step_v) - roi_pos[1]
+            return (roi_pos[0] + mid_h, roi_pos[1] + mid_v)
+
+        return roi_pos
+
+    ct_orig = ct
+    cb_orig = cb
+    ct_old = ct
+    cb_old = cb
+
+    for _ in range(iterations):
+        try:
+            ct_new = _find_insert_center(ct)
+            cb_new = _find_insert_center(cb)
+        except Exception:
+            ct, cb = ct_orig, cb_orig
+            break
+
+        if (
+            abs(ct_new[0] - ct_old[0]) > center_threshold or
+            abs(ct_new[1] - ct_old[1]) > center_threshold or
+            abs(cb_new[0] - cb_old[0]) > center_threshold or
+            abs(cb_new[1] - cb_old[1]) > center_threshold
+        ):
+            ct, cb = ct_orig, cb_orig
+            break
+
+        ct_old, cb_old = ct_new, cb_new
+        ct, cb = ct_new, cb_new
+
+    tx = ct[0] - cb[0]
+    ty = ct[1] - cb[1]
+
+    rotation_angle = np.degrees(np.arctan2(-ty, tx))
+    rotation_from_y = rotation_angle - 90.0
+    return rotation_from_y, ct, cb
+
+
 class CatPhanGeometry:
     """
     Handles geometric calculations for CatPhan phantom positioning.
@@ -70,9 +221,8 @@ class CatPhanGeometry:
         
         return center, [outer_x, outer_y]
     
-    # Note: rotation detection is provided by the centralized Alexandria
-    # implementation (`alexandria.utils.find_rotation`). Call that utility
-    # directly or use the `CTP404Analyzer.detect_rotation()` workflow.
+    # Rotation detection is exposed as a module-level helper so XVI-CatPhan
+    # can keep a local copy of the Alexandria implementation when needed.
     
     @staticmethod
     def find_slice_ctp528(dicom_set, expected_slice=60):
@@ -102,7 +252,8 @@ class CatPhanGeometry:
             
             # Interpolate the image intensity at each point along the path.
             for i in range(len(x1)):
-                f1[i] = interpn((x, y), img, [y1[i], x1[i]])
+                sample = interpn((x, y), img, [[y1[i], x1[i]]], bounds_error=False, fill_value=np.nan)
+                f1[i] = float(np.asarray(sample).ravel()[0])
             
             # `df1` is the first derivative used to count line-pair edge transitions.
             df1 = np.diff(f1)
@@ -276,7 +427,14 @@ class CatPhanGeometry:
             # `f` is the sampled intensity profile for the current candidate slice.
             f = np.zeros(len(lp_a))
             for i in range(len(lp_a)):
-                f[i] = interpn((x, y), im, [lp_a[i]*space[0], lp_b[i]*space[1]])
+                    sample = interpn(
+                        (x, y),
+                        im,
+                        [[lp_a[i]*space[0], lp_b[i]*space[1]]],
+                        bounds_error=False,
+                        fill_value=np.nan,
+                    )
+                    f[i] = float(np.asarray(sample).ravel()[0])
             profiles.append(f)
         
         # `means` stores the average profile intensity for each candidate slice.

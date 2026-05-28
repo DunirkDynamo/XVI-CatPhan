@@ -1,3 +1,20 @@
+## Before You Begin: Install setuptools
+
+The XVI-CatPhan project uses setuptools as its build backend. Therefore, to use XVI-CatPhan in editable/development mode, you must have the setuptools package installed in your Python environment **before** running:
+
+    pip install -e .
+
+Why is this required?
+- Editable installs (the -e flag) need setuptools to link your source code to your environment so changes are reflected immediately.
+- The command-line tools (like `catphan-analyze`, `catphan-select`, etc.) are only created if setuptools is present.
+- Some packaging features (like versioning and plugin discovery) depend on setuptools.
+
+If you see errors about missing setuptools or entry points, install it first:
+
+    pip install setuptools
+
+---
+
 # Quick Start Guide - CatPhan Analysis
 
 This guide gets you running quickly with minimal setup and context. If you
